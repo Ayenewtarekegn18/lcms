@@ -32,7 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-.md
+
+# project docs (keep local only)
+docs/GET_SUPABASE_CREDENTIALS.md
 
 # vercel
 .vercel
