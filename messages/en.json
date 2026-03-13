@@ -1,0 +1,48 @@
+{
+  "Index": {
+    "title": "Hello Next.js i18n",
+    "description": "This is a basic internationalization setup for Next.js App Router."
+  },
+  "Common": {
+    "language": "Language",
+    "dashboard": "Dashboard",
+    "run": "Run",
+    "summary": "Summary",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "Auth": {
+    "title": "Lebbu Kale Heywet",
+    "subtitle": "Church Management Platform",
+    "welcomeBack": "Welcome Back",
+    "signInPrompt": "Sign in to access your dashboard",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "your@email.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign In",
+    "signingIn": "Signing in...",
+    "noAccount": "Don't have an account? ",
+    "createOne": "Create one",
+    "footer": "\u00a9 2024 Lebbu Kale Heywet Church. All rights reserved."
+  },
+  "Sidebar": {
+    "appName": "LKHC",
+    "appTagline": "Church Management",
+    "nav": {
+      "dashboard": "Dashboard",
+      "members": "Members",
+      "calendar": "Calendar",
+      "financial": "Financial",
+      "communications": "Communications",
+      "documents": "Documents",
+      "reports": "Reports",
+      "settings": "Settings",
+      "ministries": "Ministries",
+      "auditLog": "Audit Log"
+    },
+    "account": "Account",
+    "logout": "Logout",
+    "loggingOut": "Logging out..."
+  }
+}

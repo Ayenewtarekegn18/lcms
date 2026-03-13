@@ -1,0 +1,47 @@
+{
+  "Index": {
+    "title": "ሰላም Next.js i18n",
+    "description": "ይህ ለ Next.js የመተግበሪያ ራውተር መሰረታዊ ዓለም አቀፍ ቅንብር ነው።"
+  },
+  "Common": {
+    "language": "ቋንቋ",
+    "dashboard": "ዳሽቦርድ",
+    "run": "አሂድ",
+    "summary": "ማጠቃለያ",
+    "settings": "ቅንብሮች",
+    "logout": "ውጣ"
+  },
+  "Auth": {
+    "title": "ለቡ ቃለ ሄውት",
+    "subtitle": "የቤተ ክርስቲያን አስተዳደር መድረክ",
+    "welcomeBack": "እንኳን በደህና መጡ",
+    "signInPrompt": "ዳሽቦርድዎን ለመድረስ ይግቡ",
+    "emailLabel": "የኢሜይል አድራሻ",
+    "emailPlaceholder": "your@email.com",
+    "passwordLabel": "የይለፍ ቃል",
+    "passwordPlaceholder": "የይለፍ ቃልዎን ያስገቡ",
+    "signIn": "ግባ",
+    "signingIn": "በመግባት ላይ...",
+    "noAccount": "መለያ የሎትም? ",
+    "createOne": "አዲስ ይፍጠሩ",
+    "footer": "© 2024 ለቡ ቃለ ሄውት ቤተ ክርስቲያን። መብቶች ሁሉ የተጠበቁ ናቸው።"
+  },
+  "Sidebar": {
+    "appName": "ለቃሄ",
+    "appTagline": "የቤተ ክርስቲያን አስተዳደር",
+    "nav": {
+      "dashboard": "ዳሽቦርድ",
+      "members": "አባላት",
+      "calendar": "ቀን አቆጣጠር",
+      "financial": "ፋይናንስ",
+      "communications": "ግንኙነት",
+      "documents": "ሰነዶች",
+      "reports": "ሪፖርቶች",
+      "settings": "ቅንብሮች",
+      "ministries": "አገልግሎቶች"
+    },
+    "account": "መለያ",
+    "logout": "ውጣ",
+    "loggingOut": "በመውጣት ላይ..."
+  }
+}
