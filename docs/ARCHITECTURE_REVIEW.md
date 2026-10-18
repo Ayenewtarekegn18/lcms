@@ -182,10 +182,10 @@ There are 66 tables across 7 scripts: 001 (6), 003 (17), 004 (5), 011 (2), 012 (
 | Pastoral care, aid, prayer | Every signed-in member reads | admin/elder plus the assigned counsellor or deacon |
 | Rosters, attendance, children | Every signed-in member reads | Staff only |
 | Audit log | Anyone inserts (forgeable); `is_admin` reads | Written only by triggers; admin/elder read |
-| Storage `documents` | No policies | Staff read/write. Members only see rows marked `All Members` |
+| Documents and the storage `documents` bucket | No storage policies; `access_level` ignored | By `access_level`: `Public` for every member, `Staff Only` for leaders, `Leadership Only` for admin/elder. A file is readable only when its document row is |
 | Unclassified tables | Varies | Deny-all, listed by the script for a deliberate decision |
 
-`verify_security.sql` turns this table into executable checks. It reports **11 failures** against the repo's current policies and **0** after remediation.
+`verify_security.sql` turns this table into executable checks. It reports **14 failures** against the repo's current policies and **0** after remediation.
 
 ---
 
@@ -308,7 +308,7 @@ Severity: **C** = Critical, **H** = High, **M** = Medium, **L** = Low. Status as
 | F-20 | H | Model | Member = login account; registration inserts with a null id; FK dropped | `api/members:91`, `010`. UI test | 🧪 2.4 (interim) / ⬜ 3.1 |
 | F-21 | H | Data | Attendance code uses table `attendance` (doesn't exist) | `api/attendance`, `reports` | 🧪 2.5 |
 | F-22 | M | Model | Five event-like tables, three attendance tables, three team tables | `003`, `015` | ⬜ 3.2 |
-| F-23 | C | Build | `next build` fails on type errors (sidebar; committed `txType()` in financial route) | `sidebar.tsx:71` | 🧪 [0.5](REMEDIATION_GUIDE.md#05-make-the-build-green-and-patch-dependencies) (build verified) |
+| F-23 | C | Build | `next build` fails on three type errors (sidebar; committed `txType()` in financial route; comma-operator ternary in spiritual-service page) | `sidebar.tsx:71`, `api/financial`, `ministry/spiritual-service/page.tsx:185` | 🧪 [0.5](REMEDIATION_GUIDE.md#05-make-the-build-green-and-patch-dependencies) (build verified) |
 | F-24 | H | Arch | Two data paths: browser-direct queries bypass the API | 11 files import the browser client | ⬜ 2.1 |
 | F-25 | H | API | 4 copy-paste generations; no guard, validation or error mapping; mass assignment; unbounded queries | §7 | 🧪 1.4 |
 | F-26 | H | Surface | 12 mock ministry pages; 11 orphan pages; 8 routes on missing tables; 13 routes with no caller | §3, §7 | ⬜ 2.7, 2.8 |
@@ -338,5 +338,5 @@ Severity: **C** = Critical, **H** = High, **M** = Medium, **L** = Low. Status as
 - **Migrations:** every `scripts/*.sql` replayed in order on fresh Postgres 17 with a Supabase-compatible `auth` shim, each in a single transaction as the SQL editor runs them.
 - **Running app:** a local GoTrue + PostgREST + Postgres stack built from the repo's scripts, with the dev server pointed at it. Chrome (Playwright) crawled all 38 dashboard routes as an admin and as a member, ran 11 user flows, and checked 390 px, dark mode and Amharic.
 - **Live project:** anonymous REST `HEAD` requests returning row counts only (no data read) and the public auth settings endpoint. No authenticated or direct database access was used.
-- **Remediation SQL:** `01`–`05` applied twice each (idempotency) to a production-like database (migrations up to `010`) and to a full-repo database. `verify_security.sql` passes all checks on both, and reports 11 failures against the repo's current policies.
+- **Remediation SQL:** `01`–`05` applied twice each (idempotency) to a production-like database (migrations up to `010`) and to a full-repo database. `verify_security.sql` passes all checks on both, and reports 14 failures against the repo's current policies. Storage policies were tested with a storage-schema shim.
 - **Code fixes in the guide:** applied to a scratch copy. `tsc` exits 0 and `next build` succeeds, with the proxy detected.

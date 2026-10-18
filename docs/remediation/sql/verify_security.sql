@@ -41,6 +41,7 @@ DECLARE
   finance_id constant uuid := '00000000-0000-4000-8000-00000002c0de';
   admin_id   constant uuid := '00000000-0000-4000-8000-00000003c0de';
   signup_id  constant uuid := '00000000-0000-4000-8000-00000004c0de';
+  leader_id  constant uuid := '00000000-0000-4000-8000-00000005c0de';
   failures text := '';
   passed int := 0;
   got text;
@@ -51,18 +52,23 @@ BEGIN
 
   -- leftovers from an interrupted run
   DELETE FROM public.financial_transactions WHERE description = 'verify_security test row';
-  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id);
-  DELETE FROM auth.users WHERE id IN (member_id, finance_id, admin_id, signup_id);
+  IF to_regclass('public.documents') IS NOT NULL THEN
+    DELETE FROM public.documents WHERE name LIKE 'verify_security %';
+  END IF;
+  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
+  DELETE FROM auth.users WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
 
   -- Test users (the sign-up trigger creates their profiles)
   INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
     (member_id,  'verify-member@example.invalid',  '{"first_name":"Verify"}'),
     (finance_id, 'verify-finance@example.invalid', '{"first_name":"Verify"}'),
     (admin_id,   'verify-admin@example.invalid',   '{"first_name":"Verify"}'),
+    (leader_id,  'verify-leader@example.invalid',  '{"first_name":"Verify"}'),
     -- attacker-style sign-up: asks for admin through metadata
     (signup_id,  'verify-signup@example.invalid',  '{"first_name":"Verify","is_admin":true,"role":"admin"}');
   UPDATE public.profiles SET role = 'finance' WHERE id = finance_id;
   UPDATE public.profiles SET role = 'admin'   WHERE id = admin_id;
+  UPDATE public.profiles SET role = 'ministry_leader' WHERE id = leader_id;
   INSERT INTO public.financial_transactions (transaction_type, amount, description, member_id, recorded_by_id)
   VALUES ('income', 100, 'verify_security test row', admin_id, admin_id);
 
@@ -121,14 +127,32 @@ BEGIN
     IF got = '0' OR got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  member cannot read deacon care notes (got ' || got || ')'; END IF;
   END IF;
 
+  IF to_regclass('public.documents') IS NOT NULL THEN
+    INSERT INTO public.documents (name, file_path, access_level) VALUES
+      ('verify_security public', 'verify/public', 'Public'),
+      ('verify_security staff', 'verify/staff', 'Staff Only'),
+      ('verify_security leadership', 'verify/leadership', 'Leadership Only');
+    got := pg_temp.try_as(member_id, $q$SELECT count(*) FROM public.documents WHERE name LIKE 'verify_security %'$q$);
+    IF got = '1' THEN passed := passed + 1; ELSE failures := failures || E'\n  member sees only Public documents (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(leader_id, $q$SELECT count(*) FROM public.documents WHERE name LIKE 'verify_security %'$q$);
+    IF got = '2' THEN passed := passed + 1; ELSE failures := failures || E'\n  leader sees Public + Staff Only documents (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(admin_id, $q$SELECT count(*) FROM public.documents WHERE name LIKE 'verify_security %'$q$);
+    IF got = '3' THEN passed := passed + 1; ELSE failures := failures || E'\n  admin sees all documents (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(leader_id, $q$INSERT INTO public.documents (name, file_path, access_level) VALUES ('verify_security escalate', 'verify/x', 'Leadership Only') RETURNING 'inserted'$q$);
+    IF got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  leader cannot create Leadership Only documents (got ' || got || ')'; END IF;
+  END IF;
+
   -- clean up
   DELETE FROM public.financial_transactions WHERE description = 'verify_security test row';
-  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id);
-  DELETE FROM auth.users WHERE id IN (member_id, finance_id, admin_id, signup_id);
+  IF to_regclass('public.documents') IS NOT NULL THEN
+    DELETE FROM public.documents WHERE name LIKE 'verify_security %';
+  END IF;
+  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
+  DELETE FROM auth.users WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
   IF to_regclass('public.audit_log') IS NOT NULL THEN
-    DELETE FROM public.audit_log WHERE user_id IN (member_id, finance_id, admin_id, signup_id)
-       OR resource_id IN (member_id::text, finance_id::text, admin_id::text, signup_id::text)
-       OR details::text LIKE '%verify_security test row%';
+    DELETE FROM public.audit_log WHERE user_id IN (member_id, finance_id, admin_id, signup_id, leader_id)
+       OR resource_id IN (member_id::text, finance_id::text, admin_id::text, signup_id::text, leader_id::text)
+       OR details::text LIKE '%verify_security%';
   END IF;
 
   IF failures <> '' THEN

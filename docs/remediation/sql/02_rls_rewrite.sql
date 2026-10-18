@@ -155,14 +155,23 @@ BEGIN
     REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.audit_log FROM anon, authenticated;
   END IF;
 
-  -- documents: staff manage; members only see documents explicitly shared with all members.
+  -- documents: access_level values used by the UI are 'Public', 'Staff Only', 'Leadership Only'.
+  --   admin/elder: everything · ministry_leader: Public + Staff Only · members: Public
   IF to_regclass('public.documents') IS NOT NULL THEN
     CREATE POLICY documents_select ON public.documents FOR SELECT TO authenticated
-      USING ((SELECT public.has_role('admin', 'elder', 'ministry_leader'))
-             OR (access_level = 'All Members' AND (SELECT public.current_app_role()) IS NOT NULL));
-    CREATE POLICY documents_write ON public.documents FOR ALL TO authenticated
-      USING ((SELECT public.has_role('admin', 'elder', 'ministry_leader')))
-      WITH CHECK ((SELECT public.has_role('admin', 'elder', 'ministry_leader')));
+      USING ((SELECT public.has_role('admin', 'elder'))
+             OR (access_level IN ('Public', 'Staff Only') AND (SELECT public.has_role('ministry_leader')))
+             OR (access_level = 'Public' AND (SELECT public.current_app_role()) IS NOT NULL));
+    CREATE POLICY documents_insert ON public.documents FOR INSERT TO authenticated
+      WITH CHECK ((SELECT public.has_role('admin', 'elder'))
+                  OR (access_level IN ('Public', 'Staff Only') AND (SELECT public.has_role('ministry_leader'))));
+    CREATE POLICY documents_update ON public.documents FOR UPDATE TO authenticated
+      USING ((SELECT public.has_role('admin', 'elder'))
+             OR (access_level IN ('Public', 'Staff Only') AND (SELECT public.has_role('ministry_leader'))))
+      WITH CHECK ((SELECT public.has_role('admin', 'elder'))
+                  OR (access_level IN ('Public', 'Staff Only') AND (SELECT public.has_role('ministry_leader'))));
+    CREATE POLICY documents_delete ON public.documents FOR DELETE TO authenticated
+      USING ((SELECT public.has_role('admin', 'elder')));
   END IF;
 
   -- user_preferences: each user their own row.
@@ -184,15 +193,24 @@ $$;
 -- 6. Storage: the private "documents" bucket follows the documents table rules.
 DO $$
 BEGIN
-  IF to_regclass('storage.objects') IS NOT NULL THEN
+  -- needs both: the bucket policies are defined in terms of the documents table (012)
+  IF to_regclass('storage.objects') IS NOT NULL AND to_regclass('public.documents') IS NOT NULL THEN
     INSERT INTO storage.buckets (id, name, public) VALUES ('documents', 'documents', false)
       ON CONFLICT (id) DO NOTHING;
     DROP POLICY IF EXISTS documents_bucket_staff_read ON storage.objects;
     DROP POLICY IF EXISTS documents_bucket_staff_write ON storage.objects;
-    CREATE POLICY documents_bucket_staff_read ON storage.objects FOR SELECT TO authenticated
-      USING (bucket_id = 'documents' AND (SELECT public.has_role('admin', 'elder', 'ministry_leader')));
-    CREATE POLICY documents_bucket_staff_write ON storage.objects FOR INSERT TO authenticated
+    DROP POLICY IF EXISTS documents_bucket_read ON storage.objects;
+    DROP POLICY IF EXISTS documents_bucket_upload ON storage.objects;
+    DROP POLICY IF EXISTS documents_bucket_delete ON storage.objects;
+    -- A file is readable exactly when its documents row is visible to the caller
+    -- (the sub-select runs under the documents policies above).
+    CREATE POLICY documents_bucket_read ON storage.objects FOR SELECT TO authenticated
+      USING (bucket_id = 'documents'
+             AND EXISTS (SELECT 1 FROM public.documents d WHERE d.file_path = storage.objects.name));
+    CREATE POLICY documents_bucket_upload ON storage.objects FOR INSERT TO authenticated
       WITH CHECK (bucket_id = 'documents' AND (SELECT public.has_role('admin', 'elder', 'ministry_leader')));
+    CREATE POLICY documents_bucket_delete ON storage.objects FOR DELETE TO authenticated
+      USING (bucket_id = 'documents' AND (SELECT public.has_role('admin', 'elder')));
   END IF;
 END
 $$;

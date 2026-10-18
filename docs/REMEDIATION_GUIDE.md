@@ -78,7 +78,7 @@ UPDATE public.profiles SET role = 'member' WHERE email = 'unknown@example.com';
 ### 0.4 Prove it
 **Fixes:** verifies F-01..F-04 · **Effort:** 10 min · ✔ **verified**
 
-1. Run [`verify_security.sql`](remediation/sql/verify_security.sql). "Success" means every check passed. Otherwise it raises an error listing each failed check and leaves nothing behind. (Against the repo's current policies it reports 11 failures.)
+1. Run [`verify_security.sql`](remediation/sql/verify_security.sql). "Success" means every check passed. Otherwise it raises an error listing each failed check and leaves nothing behind. (Against the repo's current policies it reports 14 failures.)
 2. From any machine, confirm anonymous access is gone:
    ```bash
    curl -s "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
@@ -89,7 +89,7 @@ UPDATE public.profiles SET role = 'member' WHERE email = 'unknown@example.com';
 ### 0.5 Make the build green and patch dependencies
 **Fixes:** F-23, F-12 · **Effort:** 0.5 day · ✔ **verified** (`tsc` exits 0, `next build` passes)
 
-1. Commit the pending fix in `app/api/financial/route.ts`: it removes the undefined `txType()` call, which breaks the build.
+1. Commit the pending fixes in `app/api/financial/route.ts` (removes the undefined `txType()` call) and `app/dashboard/ministry/spiritual-service/page.tsx` (replaces a comma-operator ternary at line 185 that fails type-checking). Both break the build on `main`.
 2. Fix the sidebar type error:
    ```diff
    --- components/sidebar.tsx
@@ -257,7 +257,7 @@ Today the database can't be rebuilt from the repo, and production differs from i
    | `profiles` | own row; staff see the directory | own row (guarded); admin |
    | `financial_transactions` | admin, elder, finance; own giving | admin, finance |
    | `audit_log` | admin, elder | triggers only |
-   | Storage `documents` bucket | staff | staff |
+   | `documents` table and bucket | by `access_level`: `Public` everyone, `Staff Only` leaders+, `Leadership Only` admin/elder | admin, elder; leaders for non-leadership docs |
 
    Any table it doesn't know becomes deny-all and is listed at the end, so classify it deliberately.
 2. Run `verify_security.sql` again.

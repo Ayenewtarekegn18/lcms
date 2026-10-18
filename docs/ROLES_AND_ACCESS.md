@@ -34,7 +34,8 @@
 | Member directory (`profiles`) | admin, elder, ministry_leader, finance (finance needs names to attribute giving; no Members page) | admin |
 | Financial ledger | admin, elder, finance; members see their own giving | admin, finance (delete: admin) |
 | Pastoral care (counselling, deacon visits and cases, prayer requests, follow-ups, charity and workers' aid) | admin, elder, plus the assigned counsellor or deacon | admin, elder |
-| Rosters, attendance, children, baptisms, documents | admin, elder, ministry_leader | same |
+| Rosters, attendance, children, baptisms | admin, elder, ministry_leader | same |
+| Documents (and their files) | `Public`: everyone · `Staff Only`: ministry_leader and up · `Leadership Only`: admin, elder | admin, elder; ministry_leader for non-leadership documents (delete: admin, elder) |
 | Events, ministries, announcements, schedules | every active signed-in user | admin, elder, ministry_leader |
 | Audit log | admin, elder | database triggers only |
 
