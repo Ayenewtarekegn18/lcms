@@ -82,6 +82,16 @@ export async function GET(req: Request) {
   const { data, error } = await query
 
   if (error) {
+    const msg = error.message || ''
+    // Missing `audit_log` table (migration not applied) — empty list so the page loads
+    const missingAuditTable =
+      /audit_log/i.test(msg) &&
+      (msg.includes('does not exist') ||
+        msg.includes('schema cache') ||
+        msg.includes('not found'))
+    if (missingAuditTable) {
+      return NextResponse.json([])
+    }
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 

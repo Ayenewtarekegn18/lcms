@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -35,11 +36,24 @@ export default function AuditLogPage() {
     try {
       const url = resourceFilter === 'all' ? '/api/audit-log?limit=100' : `/api/audit-log?limit=100&resource_type=${encodeURIComponent(resourceFilter)}`
       const res = await fetch(url)
-      if (!res.ok) throw new Error('Failed to load audit log')
-      const data = await res.json()
-      setEntries(data || [])
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        const errMsg =
+          typeof data?.error === 'string'
+            ? data.error
+            : res.status === 403
+              ? 'You need admin access to view the audit log.'
+              : res.status === 401
+                ? 'Sign in to view the audit log.'
+                : 'Failed to load audit log.'
+        toast.error(errMsg)
+        setEntries([])
+        return
+      }
+      setEntries(Array.isArray(data) ? data : [])
     } catch (e) {
-      console.error(e)
+      const msg = e instanceof Error ? e.message : 'Network error'
+      toast.error(msg)
       setEntries([])
     } finally {
       setLoading(false)
