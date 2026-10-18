@@ -67,8 +67,8 @@ export function Sidebar({ user, role = 'member', isAdmin = false }: SidebarProps
     ? allMainNavItems
     : allMainNavItems.filter((item) => item.roles.includes(role as keyof typeof ROLES))
 
-  const ministryItem = { href: '/dashboard/ministry', labelKey: 'nav.ministries', icon: Building2, roles: [ROLES.admin, ROLES.elder, ROLES.ministry_leader] as const }
-  const ministryNavItems = (hasFullAccess || ministryItem.roles.includes(role as keyof typeof ROLES)) ? [ministryItem] : []
+  const ministryItem = { href: '/dashboard/ministry', labelKey: 'nav.ministries', icon: Building2, roles: [ROLES.admin, ROLES.elder, ROLES.ministry_leader] as string[] }
+  const ministryNavItems = (hasFullAccess || ministryItem.roles.includes(role)) ? [ministryItem] : []
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
