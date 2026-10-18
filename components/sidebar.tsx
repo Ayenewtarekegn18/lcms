@@ -9,34 +9,16 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { LanguageSelector } from '@/components/language-selector'
 import { LayoutDashboard, Users, Building2, Wallet, Calendar, FileText, Settings, LogOut } from 'lucide-react'
+import { PAGE_ACCESS, ROLES, type Role } from '@/lib/auth/roles'
 
-// Roles and sidebar access:
-// - admin, elder: full access (all nav items).
-// - ministry_leader: dashboard, members, calendar, communications, documents, reports, settings, ministries.
-// - finance: dashboard, financial, reports, settings.
-// - member: dashboard, calendar, settings only.
-const ROLES = {
-  admin: 'admin',
-  elder: 'elder',
-  ministry_leader: 'ministry_leader',
-  finance: 'finance',
-  member: 'member',
-} as const
-
-const CAN_SEE_FINANCIAL = [ROLES.admin, ROLES.elder, ROLES.finance]
-const CAN_SEE_MEMBERS = [ROLES.admin, ROLES.elder, ROLES.ministry_leader]
-const CAN_SEE_REPORTS = [ROLES.admin, ROLES.elder, ROLES.ministry_leader, ROLES.finance]
-const CAN_SEE_COMMUNICATIONS = [ROLES.admin, ROLES.elder, ROLES.ministry_leader]
-const CAN_SEE_DOCUMENTS = [ROLES.admin, ROLES.elder, ROLES.ministry_leader]
-const CAN_SEE_AUDIT = [ROLES.admin, ROLES.elder]
-
+// Which links each role sees comes from PAGE_ACCESS, the same table the
+// server-side section layouts enforce. Hiding a link is only a convenience.
 interface SidebarProps {
   user: User
-  role?: string
-  isAdmin?: boolean
+  role: Role
 }
 
-export function Sidebar({ user, role = 'member', isAdmin = false }: SidebarProps) {
+export function Sidebar({ user, role }: SidebarProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
@@ -49,26 +31,19 @@ export function Sidebar({ user, role = 'member', isAdmin = false }: SidebarProps
     router.push('/auth/login')
   }
 
-  const allMainNavItems = [
-    { href: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard, roles: [ROLES.admin, ROLES.elder, ROLES.ministry_leader, ROLES.finance, ROLES.member] },
-    { href: '/dashboard/members', labelKey: 'nav.members', icon: Users, roles: CAN_SEE_MEMBERS },
-    { href: '/dashboard/calendar', labelKey: 'nav.calendar', icon: Calendar, roles: [ROLES.admin, ROLES.elder, ROLES.ministry_leader, ROLES.member] },
-    { href: '/dashboard/financial', labelKey: 'nav.financial', icon: Wallet, roles: CAN_SEE_FINANCIAL },
-    { href: '/dashboard/communications', labelKey: 'nav.communications', icon: FileText, roles: CAN_SEE_COMMUNICATIONS },
-    { href: '/dashboard/documents', labelKey: 'nav.documents', icon: FileText, roles: CAN_SEE_DOCUMENTS },
-    { href: '/dashboard/reports', labelKey: 'nav.reports', icon: FileText, roles: CAN_SEE_REPORTS },
-    { href: '/dashboard/audit-log', labelKey: 'nav.auditLog', icon: FileText, roles: CAN_SEE_AUDIT },
-    { href: '/dashboard/settings', labelKey: 'nav.settings', icon: Settings, roles: [ROLES.admin, ROLES.elder, ROLES.ministry_leader, ROLES.finance, ROLES.member] },
+  const allNavItems: { href: string; labelKey: string; icon: typeof LayoutDashboard; roles: readonly Role[] }[] = [
+    { href: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard, roles: ROLES },
+    { href: '/dashboard/members', labelKey: 'nav.members', icon: Users, roles: PAGE_ACCESS.members },
+    { href: '/dashboard/calendar', labelKey: 'nav.calendar', icon: Calendar, roles: ROLES },
+    { href: '/dashboard/financial', labelKey: 'nav.financial', icon: Wallet, roles: PAGE_ACCESS.financial },
+    { href: '/dashboard/communications', labelKey: 'nav.communications', icon: FileText, roles: PAGE_ACCESS.communications },
+    { href: '/dashboard/documents', labelKey: 'nav.documents', icon: FileText, roles: PAGE_ACCESS.documents },
+    { href: '/dashboard/reports', labelKey: 'nav.reports', icon: FileText, roles: PAGE_ACCESS.reports },
+    { href: '/dashboard/audit-log', labelKey: 'nav.auditLog', icon: FileText, roles: PAGE_ACCESS.auditLog },
+    { href: '/dashboard/settings', labelKey: 'nav.settings', icon: Settings, roles: ROLES },
+    { href: '/dashboard/ministry', labelKey: 'nav.ministries', icon: Building2, roles: PAGE_ACCESS.ministry },
   ]
-
-  // Admin and elder always see every nav item (full access). Others see items allowed for their role.
-  const hasFullAccess = isAdmin || role === ROLES.admin || role === ROLES.elder
-  const mainNavItems = hasFullAccess
-    ? allMainNavItems
-    : allMainNavItems.filter((item) => item.roles.includes(role as keyof typeof ROLES))
-
-  const ministryItem = { href: '/dashboard/ministry', labelKey: 'nav.ministries', icon: Building2, roles: [ROLES.admin, ROLES.elder, ROLES.ministry_leader] as string[] }
-  const ministryNavItems = (hasFullAccess || ministryItem.roles.includes(role)) ? [ministryItem] : []
+  const navItems = allNavItems.filter((item) => item.roles.includes(role))
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
@@ -76,8 +51,6 @@ export function Sidebar({ user, role = 'member', isAdmin = false }: SidebarProps
     }
     return pathname.startsWith(href)
   }
-
-  const navItems = [...mainNavItems, ...ministryNavItems]
 
   return (
     <div className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0">
