@@ -72,12 +72,16 @@ export default function AuditLogPage() {
             <SelectValue placeholder="Filter by resource" />
           </SelectTrigger>
           <SelectContent>
+            {/* values are table names: rows are written by database triggers */}
             <SelectItem value="all">All resources</SelectItem>
-            <SelectItem value="member">Members</SelectItem>
-            <SelectItem value="financial_transaction">Financial</SelectItem>
-            <SelectItem value="event">Events</SelectItem>
-            <SelectItem value="attendance">Attendance</SelectItem>
-            <SelectItem value="ministry">Ministries</SelectItem>
+            <SelectItem value="profiles">Members</SelectItem>
+            <SelectItem value="financial_transactions">Financial</SelectItem>
+            <SelectItem value="events">Events</SelectItem>
+            <SelectItem value="attendance_records">Attendance</SelectItem>
+            <SelectItem value="ministries">Ministries</SelectItem>
+            <SelectItem value="ministry_members">Ministry members</SelectItem>
+            <SelectItem value="documents">Documents</SelectItem>
+            <SelectItem value="announcements">Announcements</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -110,7 +114,7 @@ export default function AuditLogPage() {
                       <td className="px-4 py-3 text-sm text-slate-600">
                         {new Date(entry.created_at).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-900">{entry.user_email || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-900">{entry.user_email || 'system'}</td>
                       <td className="px-4 py-3 text-sm">
                         <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
                           {entry.action}
@@ -120,7 +124,10 @@ export default function AuditLogPage() {
                         {entry.resource_type}
                         {entry.resource_id ? ` #${entry.resource_id.slice(0, 8)}` : ''}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td
+                        className="px-4 py-3 text-sm text-slate-600 max-w-md truncate"
+                        title={entry.details ? JSON.stringify(entry.details, null, 2) : undefined}
+                      >
                         {entry.details && Object.keys(entry.details).length > 0
                           ? JSON.stringify(entry.details)
                           : '—'}

@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TrendingUp, TrendingDown, DollarSign, Plus, Trash2, Download } from 'lucide-react'
-import { logAudit } from '@/lib/audit'
 
 const INCOME_CATEGORIES = [
   'Tithes',
@@ -98,16 +97,13 @@ export default function FinancialPage() {
 
   const handleAddTransaction = async () => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('financial_transactions')
         .insert([{
           ...formData,
           amount: parseFloat(formData.amount.toString()),
         }])
-        .select('id')
-        .single()
       if (error) throw error
-      await logAudit({ action: 'create', resource_type: 'financial_transaction', resource_id: data?.id, details: { type: formData.type, amount: formData.amount } })
       fetchTransactions()
       setModalOpen(false)
       setFormData({
@@ -130,7 +126,6 @@ export default function FinancialPage() {
         .delete()
         .eq('id', id)
       if (error) throw error
-      await logAudit({ action: 'delete', resource_type: 'financial_transaction', resource_id: id })
       fetchTransactions()
     } catch (error) {
       console.error('Error deleting transaction:', error)

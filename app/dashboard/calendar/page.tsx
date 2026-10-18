@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar, Plus, Clock, MapPin } from 'lucide-react'
-import { logAudit } from '@/lib/audit'
 import { toast } from 'sonner'
 
 interface CalendarEvent {
@@ -157,9 +156,8 @@ export default function CalendarPage() {
         ministry: formData.ministry || null,
       }
       if (user) payload.organizer_id = user.id
-      const { data: inserted, error } = await supabase.from('events').insert([payload]).select('id').single()
+      const { error } = await supabase.from('events').insert([payload])
       if (error) throw error
-      await logAudit({ action: 'create', resource_type: 'event', resource_id: inserted?.id, details: { title: formData.title } })
       setModalOpen(false)
       loadEvents()
     } catch (err) {

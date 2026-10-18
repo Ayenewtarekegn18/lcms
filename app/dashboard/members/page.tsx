@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Edit, Trash2, Eye, Mail, Phone, MapPin, Users, Heart } from 'lucide-react'
-import { logAudit } from '@/lib/audit'
 
 interface Member {
   id: string
@@ -111,15 +110,11 @@ export default function MembersPage() {
           .update(buildProfilePayload(formData))
           .eq('id', editingMember.id)
         if (error) throw error
-        await logAudit({ action: 'update', resource_type: 'member', resource_id: editingMember.id })
       } else {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('profiles')
           .insert([{ ...buildProfilePayload(formData), is_active: true }])
-          .select('id')
-          .single()
         if (error) throw error
-        await logAudit({ action: 'create', resource_type: 'member', resource_id: data?.id })
       }
       fetchMembers()
       setModalOpen(false)
@@ -136,7 +131,6 @@ export default function MembersPage() {
         .update({ is_active: false })
         .eq('id', id)
       if (error) throw error
-      await logAudit({ action: 'deactivate', resource_type: 'member', resource_id: id })
       fetchMembers()
     } catch (error) {
       console.error('Error deleting member:', error)
