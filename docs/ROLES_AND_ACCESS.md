@@ -1,49 +1,66 @@
-# Roles and Sidebar Access
+# Roles and Access
 
-## Why am I seeing only 3 items in the sidebar?
+## Roles
 
-You see **Dashboard**, **Calendar**, and **Settings** only when your user is treated as a **member**.  
-Admins and elders see **all** items (Dashboard, Members, Calendar, Financial, Communications, Documents, Reports, Audit Log, Settings, Ministries).
+`profiles.role` is the single source of truth. It's one of:
 
-So if you expect to be an admin but only see 3 items, your **profile in the database** likely has:
+| Role | Who |
+|---|---|
+| `admin` | Church administrators / IT. Full access, manages roles |
+| `elder` | Elders and pastors. Full read access, pastoral care, audit log |
+| `ministry_leader` | Leaders of a ministry. Members directory, events, communications, documents, ministry pages |
+| `finance` | Treasurer / finance team. Ledger and financial reports |
+| `member` | Everyone else with a login. Own profile, calendar, own giving |
 
-- `role = 'member'` (or null, which defaults to member), and  
-- `is_admin = false`
+`profiles.is_admin` is a legacy flag. After `docs/remediation/sql/01_emergency_lockdown.sql` it's derived automatically (`is_admin = role = 'admin'`); don't set it by hand.
 
-The app decides “full access” from: `is_admin === true` **or** `role === 'admin'` **or** `role === 'elder'`.
+## Page access (intended)
 
----
+| Page | admin | elder | ministry_leader | finance | member |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Dashboard, Calendar, Settings | ✔ | ✔ | ✔ | ✔ | ✔ |
+| Members | ✔ | ✔ | ✔ | | |
+| Financial | ✔ | ✔ (read-only) | | ✔ | |
+| Communications, Documents | ✔ | ✔ | ✔ | | |
+| Reports | ✔ | ✔ | ✔ | ✔ | |
+| Ministries | ✔ | ✔ | ✔ | | |
+| Audit Log | ✔ | ✔ | | | |
 
-## How to give a user full access (admin)
+## Data access (enforced by RLS after remediation 01 + 02)
 
-In **Supabase** (Table Editor → `profiles`), find the row for your user (same `id` as in Authentication) and set:
+| Data | Read | Write |
+|---|---|---|
+| Own profile | self | self, except `role` / `is_active` (admin only) |
+| Member directory (`profiles`) | admin, elder, ministry_leader, finance (finance needs names to attribute giving; no Members page) | admin |
+| Financial ledger | admin, elder, finance; members see their own giving | admin, finance (delete: admin) |
+| Pastoral care (counselling, deacon visits and cases, prayer requests, follow-ups, charity and workers' aid) | admin, elder, plus the assigned counsellor or deacon | admin, elder |
+| Rosters, attendance, children, baptisms, documents | admin, elder, ministry_leader | same |
+| Events, ministries, announcements, schedules | every active signed-in user | admin, elder, ministry_leader |
+| Audit log | admin, elder | database triggers only |
 
-- **role** = `admin`  
-- **is_admin** = `true` (optional but recommended)
+Deactivated users (`is_active = false`) lose all role-based access.
 
-Or run in the SQL Editor:
+## How it's enforced
+
+| Layer | Mechanism | State |
+|---|---|---|
+| Database (authoritative) | RLS policies using `public.has_role(...)` | Written and tested: [`01`](remediation/sql/01_emergency_lockdown.sql), [`02`](remediation/sql/02_rls_rewrite.sql). **Must be applied to each project** |
+| Pages | Server layouts calling `requirePageRole(...)` | Remediation Step 1.2 |
+| API routes | `requireRole(...)` + zod | Remediation Step 1.4 |
+| Sidebar | Hides links by role (`components/sidebar.tsx`) | Convenience only; it doesn't protect anything |
+
+> **Until the remediation is applied:** the dashboard layout reads only `is_admin`, so `elder`, `ministry_leader` and `finance` users see the 3-item member menu, and anyone can open restricted pages by URL. See [ARCHITECTURE_REVIEW.md §5.3](ARCHITECTURE_REVIEW.md#53-authorisation-layers-intended-vs-actual).
+
+Planned refinement ([Remediation 2.6](REMEDIATION_GUIDE.md#26-scope-ministry-leaders-to-their-own-ministry)): a `ministry_leader` edits only the ministries they lead.
+
+## Granting a role
+
+Only an admin, or someone using the SQL editor, can change roles. Users can't change their own (enforced by a trigger).
 
 ```sql
--- Replace 'your@email.com' with the user's email
 UPDATE public.profiles
-SET role = 'admin', is_admin = true
-WHERE id = (
-  SELECT id FROM auth.users WHERE email = 'your@email.com'
-);
+   SET role = 'finance'          -- admin | elder | ministry_leader | finance | member
+ WHERE id = (SELECT id FROM auth.users WHERE email = 'person@example.com');
 ```
 
-Then log out and log back in so the layout can reload your profile.
-
----
-
-## Role summary
-
-| Role            | Sidebar access |
-|-----------------|----------------|
-| **admin**       | Full: Dashboard, Members, Calendar, Financial, Communications, Documents, Reports, Audit Log, Settings, Ministries. |
-| **elder**       | Same as admin (full access). |
-| **ministry_leader** | Dashboard, Members, Calendar, Communications, Documents, Reports, Settings, Ministries (no Audit Log, no Financial). |
-| **finance**     | Dashboard, Financial, Reports, Settings. |
-| **member**      | Dashboard, Calendar, Settings only (3 items). |
-
-API routes may enforce additional checks (e.g. Audit Log and some financial actions are restricted to admin/elder or finance).
+The user must sign out and back in for the sidebar to update.
