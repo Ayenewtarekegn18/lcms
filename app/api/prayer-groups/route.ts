@@ -1,23 +1,38 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { STAFF } from '@/lib/auth/roles'
+import { parseBody, pageRange, opt, text } from '@/lib/api/validation'
+
+const createSchema = z
+  .object({
+    name: text(200),
+    description: opt(z.string().trim().max(5000)),
+    meeting_schedule: opt(z.string().trim().max(200)),
+  })
+  .strict()
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { data, error } = await supabase.from('prayer_groups').select('*').order('name')
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json(data || [])
+  const auth = await requireRole()
+  if (auth.error) return auth.error
+  const { searchParams } = new URL(req.url)
+
+  const { data, error } = await auth.supabase
+    .from('prayer_groups')
+    .select('*')
+    .order('name')
+    .range(...pageRange(searchParams))
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { name, description, meeting_schedule } = body
-  if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 })
-  const { data, error } = await supabase.from('prayer_groups').insert([{ name, description: description || null, meeting_schedule: meeting_schedule || null }]).select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, createSchema)
+  if (body.error) return body.error
+
+  const { data, error } = await auth.supabase.from('prayer_groups').insert([body.data]).select().single()
+  if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
 }

@@ -1,116 +1,71 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { FINANCE_READ, FINANCE_WRITE } from '@/lib/auth/roles'
+import { parseBody, pageRange, opt, amount, date, uuid } from '@/lib/api/validation'
+
+const kind = z.enum(['income', 'expense'])
+
+const createSchema = z
+  .object({
+    type: opt(kind),
+    transaction_type: opt(kind),
+    category: opt(z.string().trim().max(100)),
+    amount,
+    description: opt(z.string().trim().max(500)),
+    transaction_date: opt(date),
+    member_id: opt(uuid),
+    notes: opt(z.string().trim().max(5000)),
+  })
+  .strict()
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-
+  const auth = await requireRole(...FINANCE_READ)
+  if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
-  const type = searchParams.get('type')
-  const startDate = searchParams.get('start_date')
-  const endDate = searchParams.get('end_date')
+  const type = z.string().max(50).safeParse(searchParams.get('type'))
+  const startDate = date.safeParse(searchParams.get('start_date'))
+  const endDate = date.safeParse(searchParams.get('end_date'))
 
-  let query = supabase
-    .from('financial_transactions')
-    .select('*')
-    .order('transaction_date', { ascending: false })
+  let query = auth.supabase.from('financial_transactions').select('*').order('transaction_date', { ascending: false })
+  if (type.success && type.data) query = query.eq('transaction_type', type.data)
+  if (startDate.success) query = query.gte('transaction_date', startDate.data)
+  if (endDate.success) query = query.lte('transaction_date', endDate.data)
+  const { data: rows, error } = await query.range(...pageRange(searchParams, 500))
+  if (error) return dbError(error)
 
-  if (type) {
-    query = query.eq('transaction_type', type)
-  }
-
-  if (startDate) {
-    query = query.gte('transaction_date', startDate)
-  }
-
-  if (endDate) {
-    query = query.lte('transaction_date', endDate)
-  }
-
-  const { data: rows, error } = await query
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    )
-  }
-
-  const transactions = (rows || []).map((t) => ({
-    ...(t as Record<string, unknown>),
-    type: (t as { transaction_type?: string; type?: string }).transaction_type ?? (t as { type?: string }).type,
-    amount: Number((t as { amount?: unknown }).amount) || 0,
+  const transactions = (rows ?? []).map((t: { transaction_type?: string; amount?: unknown }) => ({
+    ...t,
+    type: t.transaction_type,
+    amount: Number(t.amount) || 0,
   }))
-  const totals = {
-    income: transactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + (t.amount || 0), 0),
-    expense: transactions
-      .filter((t) => t.type === 'expense')
-      .reduce((sum, t) => sum + (t.amount || 0), 0),
-    total: transactions.reduce((sum, t) => {
-      if (t.type === 'income') return sum + (t.amount || 0)
-      if (t.type === 'expense') return sum - (t.amount || 0)
-      return sum
-    }, 0),
-  }
+  // Sum in whole cents to avoid floating-point drift.
+  const cents = (kindName: string) =>
+    transactions.filter((t) => t.type === kindName).reduce((sum, t) => sum + Math.round(t.amount * 100), 0)
+  const income = cents('income')
+  const expense = cents('expense')
+  const totals = { income: income / 100, expense: expense / 100, total: (income - expense) / 100 }
 
-  return NextResponse.json({
-    transactions,
-    totals,
-  })
+  return NextResponse.json({ transactions, totals })
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const body = await req.json()
+  const auth = await requireRole(...FINANCE_WRITE)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, createSchema)
+  if (body.error) return body.error
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-
-  const { data: transaction, error } = await supabase
+  const { type, transaction_type, transaction_date, ...fields } = body.data
+  const { data, error } = await auth.supabase
     .from('financial_transactions')
-    .insert([
-      {
-        transaction_type: body.type ?? body.transaction_type ?? 'income',
-        category: body.category ?? null,
-        amount: body.amount,
-        description: body.description ?? null,
-        transaction_date: body.transaction_date ?? new Date().toISOString().slice(0, 10),
-        member_id: body.member_id ?? null,
-        recorded_by_id: user.id,
-        notes: body.notes ?? null,
-      },
-    ])
+    .insert([{
+      ...fields,
+      transaction_type: type ?? transaction_type ?? 'income',
+      transaction_date: transaction_date ?? new Date().toISOString().slice(0, 10),
+      recorded_by_id: auth.user.id,
+    }])
     .select()
     .single()
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    )
-  }
-
-  return NextResponse.json(transaction, { status: 201 })
+  if (error) return dbError(error)
+  return NextResponse.json(data, { status: 201 })
 }

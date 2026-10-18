@@ -1,34 +1,38 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { PASTORAL } from '@/lib/auth/roles'
+import { parseBody, pageRange } from '@/lib/api/validation'
+import { spiritualFollowUp } from '@/lib/api/schemas'
+
+// Pastoral follow-up notes are confidential: admin and elder only (same as RLS).
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(...PASTORAL)
+  if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
-  const status = searchParams.get('status')
-  let query = supabase
+  const status = spiritualFollowUp.shape.status.safeParse(searchParams.get('status') ?? undefined)
+
+  let query = auth.supabase
     .from('spiritual_follow_ups')
     .select('*, member:profiles!member_id(id, first_name, last_name)')
     .order('last_contact_date', { ascending: false, nullsFirst: false })
-  if (status) query = query.eq('status', status)
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json(data || [])
+  if (status.success && status.data) query = query.eq('status', status.data)
+  const { data, error } = await query.range(...pageRange(searchParams))
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { member_id, follow_up_type, last_contact_date, notes, status: st } = body
-  if (!member_id || !follow_up_type) return NextResponse.json({ error: 'member_id and follow_up_type required' }, { status: 400 })
-  const { data, error } = await supabase
+  const auth = await requireRole(...PASTORAL)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, spiritualFollowUp)
+  if (body.error) return body.error
+
+  const { data, error } = await auth.supabase
     .from('spiritual_follow_ups')
-    .insert([{ member_id, follow_up_type, last_contact_date: last_contact_date || null, notes: notes || null, status: st || 'ongoing' }])
+    .insert([{ ...body.data, status: body.data.status ?? 'ongoing' }])
     .select()
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
 }

@@ -1,23 +1,39 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { PASTORAL } from '@/lib/auth/roles'
+import { parseBody, pageRange, opt, uuid, date } from '@/lib/api/validation'
+
+// Care visit notes are confidential: admin and elder only (assigned deacons also see their own visits via RLS).
+const createSchema = z
+  .object({
+    member_id: uuid,
+    visit_date: date,
+    notes: opt(z.string().trim().max(5000)),
+  })
+  .strict()
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { data, error } = await supabase.from('deacon_care_visits').select('*, member:profiles!member_id(id, first_name, last_name), visitor:profiles!visitor_id(id, first_name, last_name)').order('visit_date', { ascending: false })
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json(data || [])
+  const auth = await requireRole(...PASTORAL)
+  if (auth.error) return auth.error
+  const { searchParams } = new URL(req.url)
+
+  const { data, error } = await auth.supabase
+    .from('deacon_care_visits')
+    .select('*, member:profiles!member_id(id, first_name, last_name), visitor:profiles!visitor_id(id, first_name, last_name)')
+    .order('visit_date', { ascending: false })
+    .range(...pageRange(searchParams))
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { member_id, visit_date, notes } = body
-  if (!member_id || !visit_date) return NextResponse.json({ error: 'member_id and visit_date required' }, { status: 400 })
-  const { data, error } = await supabase.from('deacon_care_visits').insert([{ member_id, visitor_id: user.id, visit_date, notes: notes || null }]).select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  const auth = await requireRole(...PASTORAL)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, createSchema)
+  if (body.error) return body.error
+
+  const { data, error } = await auth.supabase.from('deacon_care_visits').insert([{ ...body.data, visitor_id: auth.user.id }]).select().single()
+  if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
 }

@@ -1,25 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { itemRoutes } from '@/lib/api/crud'
+import { womenMeeting } from '@/lib/api/schemas'
+import { STAFF } from '@/lib/auth/roles'
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const body = await req.json()
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
-  ;['title', 'meeting_date', 'meeting_time', 'location', 'attendees_count', 'minutes_text'].forEach(k => { if (body[k] !== undefined) updates[k] = body[k] })
-  const { data, error } = await supabase.from('women_meetings').update(updates).eq('id', id).select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json(data)
-}
-
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const { error } = await supabase.from('women_meetings').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ ok: true })
-}
+const item = itemRoutes({ table: 'women_meetings', roles: STAFF, update: womenMeeting.partial(), touchUpdatedAt: true })
+export const PATCH = item.PATCH
+export const DELETE = item.DELETE
