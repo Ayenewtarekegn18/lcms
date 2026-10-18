@@ -182,7 +182,7 @@ export default function SpiritualServicePage() {
   const handleRemoveCandidate = (id: string) => {
     if (!confirm('Remove this candidate from the list?')) return
     fetch(`/api/spiritual-candidates/${id}`, { method: 'DELETE' })
-      .then(r => r.ok ? (toast.success('Removed'), fetchCandidates()) : toast.error('Failed to remove'))
+      .then(r => { if (r.ok) { toast.success('Removed'); fetchCandidates() } else { toast.error('Failed to remove') } })
   }
 
   const handleAddClass = () => {
