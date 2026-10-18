@@ -4,16 +4,20 @@
 export const ROLES = ['admin', 'elder', 'ministry_leader', 'finance', 'member'] as const
 export type Role = (typeof ROLES)[number]
 
-const STAFF: readonly Role[] = ['admin', 'elder', 'ministry_leader']
+/** Role groups used by page gates and API routes; same groups as docs/remediation/sql/02_rls_rewrite.sql. */
+export const STAFF: readonly Role[] = ['admin', 'elder', 'ministry_leader']
+export const PASTORAL: readonly Role[] = ['admin', 'elder']
+export const FINANCE_READ: readonly Role[] = ['admin', 'elder', 'finance']
+export const FINANCE_WRITE: readonly Role[] = ['admin', 'finance']
 
 /** Roles allowed to open each restricted dashboard section. Unlisted sections are open to every signed-in user. */
 export const PAGE_ACCESS = {
   members: STAFF,
-  financial: ['admin', 'elder', 'finance'],
+  financial: FINANCE_READ,
   communications: STAFF,
   documents: STAFF,
   reports: [...STAFF, 'finance'],
-  auditLog: ['admin', 'elder'],
+  auditLog: PASTORAL,
   ministry: STAFF,
   events: STAFF,
   attendance: STAFF,
