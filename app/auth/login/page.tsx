@@ -19,39 +19,9 @@ export default function LoginPage() {
 
   // Check environment variables on mount (non-blocking)
   useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('❌ Environment variables missing:', {
-        url: !!supabaseUrl,
-        key: !!supabaseKey,
-      })
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setError('Configuration error: Supabase credentials not found. Please restart your dev server.')
-      return
     }
-    
-    console.log('✅ Environment variables loaded:', {
-      url: supabaseUrl.substring(0, 30) + '...',
-      key: supabaseKey.substring(0, 20) + '...',
-    })
-    
-    // Silently test Supabase connection (non-blocking, errors ignored)
-    fetch(`${supabaseUrl}/rest/v1/`, {
-      method: 'GET',
-      headers: {
-        'apikey': supabaseKey,
-        'Content-Type': 'application/json',
-      },
-    })
-      .then(response => {
-        console.log('✅ Supabase connection test:', response.status, response.statusText)
-      })
-      .catch(() => {
-        // Silently fail - connection test is just for debugging
-        // Don't show error to user, login will handle it
-        console.warn('⚠️ Supabase connection test failed (this is OK, login will still work)')
-      })
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -68,23 +38,14 @@ export default function LoginPage() {
         throw new Error('Supabase configuration missing. Please restart your dev server.')
       }
       
-      console.log('🔐 Attempting login for:', email)
-      console.log('🔍 Supabase URL:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING')
-      
       const supabase = createClient()
-      
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-      
+
       if (error) {
-        console.error('❌ Login error:', {
-          message: error.message,
-          status: error.status,
-          name: error.name,
-        })
-        
         // Provide user-friendly error messages
         if (error.message.includes('Invalid login credentials')) {
           setError('Invalid email or password. Please try again.')
@@ -97,15 +58,12 @@ export default function LoginPage() {
       }
       
       if (data?.user) {
-        console.log('✅ Login successful:', data.user.email)
         router.push('/dashboard')
         router.refresh()
       } else {
         setError('Login successful but no user data received. Please try again.')
       }
     } catch (err: unknown) {
-      console.error('❌ Login failed:', err)
-      
       if (err instanceof Error) {
         // Check if it's a network/fetch error
         if (err.message.includes('Failed to fetch') || err.message.includes('fetch') || err.name === 'TypeError') {
