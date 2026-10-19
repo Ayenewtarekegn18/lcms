@@ -282,49 +282,49 @@ flowchart LR
 
 ## 12. Findings register
 
-Severity: **C** = Critical, **H** = High, **M** = Medium, **L** = Low. Status as of this change: ✅ fixed in the repo · 🧪 fix written and tested, not applied · ⬜ open.
+Severity: **C** = Critical, **H** = High, **M** = Medium, **L** = Low. Status once the open fix branches are merged (2026-10-19): ✅ fixed in the repo · 🧪 fix written and tested (a migration or dashboard step), not yet applied to production · ⬜ open.
 
 | ID | Sev | Area | Finding | Evidence | Fix |
 |---|---|---|---|---|---|
 | F-01 | C | Security | Anonymous visitors read and write tables using the public anon key | Live probe: 7 tables readable without login. `008`, `011`, `012` use `USING (true)` with no `TO authenticated` | 🧪 [0.3](REMEDIATION_GUIDE.md#03-lock-the-database-now) |
 | F-02 | C | Security | Sign-up trigger copies `is_admin` from user-controlled metadata, and public sign-up is on | `002_profile_trigger.sql:21`. Live: `disable_signup=false` | 🧪 0.1, 0.3 |
-| F-03 | C | Security | Members promote themselves to admin (`profiles` UPDATE has no column guard; `/api/profile` writes the raw body) | `008:10`, `app/api/profile/route.ts:53`. Reproduced in the UI | 🧪 0.3, 1.4 |
+| F-03 | C | Security | Members promote themselves to admin (`profiles` UPDATE has no column guard; `/api/profile` writes the raw body) | `008:10`, `app/api/profile/route.ts:53`. Reproduced in the UI | ✅ API (1.4) / 🧪 0.3 database |
 | F-04 | C | Security | Financial ledger readable and insertable by anyone | `008:28-29`. Live: 8 rows readable without login | 🧪 0.3 |
 | F-05 | H | Security | All members can read pastoral care, charity, aid and prayer data | `015:333` | 🧪 1.3 |
 | F-06 | H | Security | Over-broad writes: `true` policies; any leader writes all 34 ministry tables | `008`, `015:335` | 🧪 1.3, 2.6 |
 | F-07 | H | Security | Document `access_level` never enforced; no storage policies | `012:18-21`, `api/documents` | 🧪 1.3 |
-| F-08 | H | AuthZ | Roles only hide sidebar links; no page or API gates; the layout never loads `role` | `dashboard/layout.tsx:23-30`. Member read finances by URL | 🧪 1.2 |
+| F-08 | H | AuthZ | Roles only hide sidebar links; no page or API gates; the layout never loads `role` | `dashboard/layout.tsx:23-30`. Member read finances by URL | ✅ [1.2](REMEDIATION_GUIDE.md#12-use-one-role-model-in-the-app) page and API gates |
 | F-09 | H | Audit | Audit log written by the browser: skippable and forgeable | `lib/audit.ts`, `014:31`. 0 rows in the test session | 🧪 1.5 |
 | F-10 | H | Secrets | Demo admin credentials published in the public repo; no environment guard on the seed | `setup-demo-accounts.js`, `005`, `DEMO_SETUP.md` | ✅ repo / ⬜ [0.1](REMEDIATION_GUIDE.md#01-close-the-doors-at-the-platform-level) rotate accounts |
-| F-11 | M | Session | No `proxy.ts`, so session refresh is never persisted | `lib/supabase/proxy.ts` unused | 🧪 1.7 |
-| F-12 | H | Deps | `next@16.0.10` critical advisory; 9 vulnerable packages | `npm audit` | ⬜ 0.5 |
+| F-11 | M | Session | No `proxy.ts`, so session refresh is never persisted | `lib/supabase/proxy.ts` unused | ✅ 1.7 |
+| F-12 | H | Deps | `next@16.0.10` critical advisory; 9 vulnerable packages | `npm audit` | ✅ 0.5 (`npm audit`: 0) |
 | F-13 | M | Leakage | Raw DB errors shown to users; console logging of email and key prefixes | login page, `client.ts` | ✅ logging / 🧪 1.4 errors |
 | F-14 | M | Data | `updated_at` never maintained; no CHECK constraints; USD default | about 30 tables | 🧪 1.6 |
 | F-15 | H | Data | NOT NULL actor columns not set by the app, so inserts fail | `recorded_by_id`, `organizer_id` | 🧪 1.6 |
 | F-16 | L | Data | About 40 foreign keys without an index | `015` | 🧪 1.6 |
-| F-17 | C | Schema | No migration tooling; repo cannot rebuild the DB (`015` syntax error); production missing 38 tables; code calls 9 nonexistent tables | Replay on fresh Postgres; live probe | ⬜ 0.2, [1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible) |
+| F-17 | C | Schema | No migration tooling; repo cannot rebuild the DB (`015` syntax error); production missing 38 tables; code calls 9 nonexistent tables | Replay on fresh Postgres; live probe | ✅ repo: dbmate migrations, round trip in CI ([1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible)) / ⬜ 0.2 adopt production |
 | F-18 | H | Data | Ledger stores labels in `transaction_type`; app reads `type`. Totals always $0 and adding a transaction fails | `financial/page.tsx:85,103`. UI test | 🧪 2.2 |
 | F-19 | H | Data | Calendar inserts a nonexistent `ministry` column and omits NOT NULL `start_date` | `calendar/page.tsx:150-158`. UI test | 🧪 2.3 |
 | F-20 | H | Model | Member = login account; registration inserts with a null id; FK dropped | `api/members:91`, `010`. UI test | 🧪 2.4 (interim) / ⬜ 3.1 |
 | F-21 | H | Data | Attendance code uses table `attendance` (doesn't exist) | `api/attendance`, `reports` | 🧪 2.5 |
 | F-22 | M | Model | Five event-like tables, three attendance tables, three team tables | `003`, `015` | ⬜ 3.2 |
-| F-23 | C | Build | `next build` fails on three type errors (sidebar; committed `txType()` in financial route; comma-operator ternary in spiritual-service page) | `sidebar.tsx:71`, `api/financial`, `ministry/spiritual-service/page.tsx:185` | 🧪 [0.5](REMEDIATION_GUIDE.md#05-make-the-build-green-and-patch-dependencies) (build verified) |
+| F-23 | C | Build | `next build` fails on three type errors (sidebar; committed `txType()` in financial route; comma-operator ternary in spiritual-service page) | `sidebar.tsx:71`, `api/financial`, `ministry/spiritual-service/page.tsx:185` | ✅ [0.5](REMEDIATION_GUIDE.md#05-make-the-build-green-and-patch-dependencies) |
 | F-24 | H | Arch | Two data paths: browser-direct queries bypass the API | 11 files import the browser client | ⬜ 2.1 |
-| F-25 | H | API | 4 copy-paste generations; no guard, validation or error mapping; mass assignment; unbounded queries | §7 | 🧪 1.4 |
+| F-25 | H | API | 4 copy-paste generations; no guard, validation or error mapping; mass assignment; unbounded queries | §7 | ✅ 1.4 (34 routes) |
 | F-26 | H | Surface | 12 mock ministry pages; 11 orphan pages; 8 routes on missing tables; 13 routes with no caller | §3, §7 | ⬜ 2.7, 2.8 |
-| F-27 | H | Feature | Registration saves about 10 of 50 fields; uploads dropped; children never saved | `register/page.tsx:204-221,328` | ⬜ 2.4 |
+| F-27 | H | Feature | Registration saves about 10 of 50 fields; uploads dropped; children never saved | `register/page.tsx:204-221,328` | ✅ [2.4](REMEDIATION_GUIDE.md#24-member-registration) lebu-form register |
 | F-28 | M | Integrity | Fake numbers shown as data (ministry counts, trends, status, participation) | `ministry/page.tsx`, `reports/page.tsx` | ⬜ 2.5, 2.7 |
-| F-29 | M | DX | Browser client rejects non-`*.supabase.co` URLs, blocking local Supabase | `client.ts:44` | 🧪 1.1 |
+| F-29 | M | DX | Browser client rejects non-`*.supabase.co` URLs, blocking local Supabase | `client.ts:44` | ✅ 1.1 |
 | F-30 | M | Perf | No data layer; N+1 counts (14 requests); client-side sums capped at 1,000 rows; float money | ministry hub, reports | ⬜ 2.5, 2.9 |
 | F-31 | M | UX | Silent failures; double submits; `alert`/`confirm`; no error boundaries | about 13 pages | ⬜ 2.9 |
 | F-32 | M | UX | Not usable on phones (fixed sidebar) | screenshot at 390 px | ⬜ 3.3 |
 | F-33 | M | i18n | About 1% of strings translated; no Ethiopic font; `$` currency | `messages/*.json`, `lib/fonts.ts` | ⬜ 3.4 |
 | F-34 | L | a11y | 19 icon-only buttons without labels; low contrast `text-slate-400` | frontend review | ⬜ 3.5 |
 | F-35 | M | Auth | No email-confirm route; no password reset | `app/auth/*` | ⬜ 2.10 |
-| F-36 | H | Ops | No tests, no CI | `package.json` | ⬜ 3.6 |
+| F-36 | H | Ops | No tests, no CI | `package.json` | ✅ [3.6](REMEDIATION_GUIDE.md#36-tests-and-ci) unit, RLS, migration and e2e tests in CI |
 | F-37 | H | Ops | One Supabase project for dev, demo and prod; demo data in prod; undocumented deploy | live data | ⬜ 1.1, 0.1 |
-| F-38 | M | Ops | No monitoring, security headers or rate limiting | `next.config.ts` | ⬜ 1.8, 3.7 |
-| F-39 | C | Ops | No backups or DR; production project was paused/deleted unnoticed (2026-10-16) | DNS NXDOMAIN observed | ⬜ 0.2, 0.6, 3.8 |
+| F-38 | M | Ops | No monitoring, security headers or rate limiting | `next.config.ts` | ✅ headers (1.8) / ⬜ rate limits, monitoring 3.7 |
+| F-39 | C | Ops | No backups or DR; production project was paused/deleted unnoticed (2026-10-16) | DNS NXDOMAIN observed | ✅ keep-warm ping (0.6) / ⬜ 0.2, 0.6 plan, 3.8 |
 | F-40 | L | Hygiene | About 17 GB of `.wav` files in the repo root; 34 unused deps; unused fonts; 2 mega-commits | repo | ✅ `.gitignore` / ⬜ 3.9 |
 | F-41 | H | Privacy | Sensitive personal data (IDs, income, counselling, children) with no privacy policy, consent or retention rules | PRD, registration spec | ⬜ 3.10 |
 

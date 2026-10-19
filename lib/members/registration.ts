@@ -166,7 +166,7 @@ export const registrationSchema = z.object({
   childrenList: z.array(childRow).max(ROSTER_LIMITS.childrenList),
   household: z.array(householdRow).max(ROSTER_LIMITS.household),
   blood: optChoice(BLOOD),
-  phone,
+  phone: z.string().trim().min(1, MSG.required).pipe(phone),
   phone2: optPhone,
   email: blank.or(z.string().trim().email(MSG.email).max(200)),
   subcity: optChoice(SUBCITIES),

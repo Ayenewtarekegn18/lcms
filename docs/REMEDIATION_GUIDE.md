@@ -9,13 +9,14 @@ A step-by-step plan to take LKHC from prototype to production. Each step lists t
 | ✔ **verified** | This exact code or SQL was applied to a copy of the project: SQL on Postgres 17 (production-like and full-repo states, run twice), TypeScript with `tsc` and `next build` |
 | ✎ **sketch** | A design to adapt; not tested as-is |
 
-| Phase | Goal | Effort (1 dev) |
-|---|---|---|
-| [0. Contain](#phase-0--contain-today) | Stop the data exposure, get a green build | 1.5–2 days |
-| [1. Secure foundation](#phase-1--secure-foundation) | Reproducible schema, real authorisation, server-side audit | 9–13 days |
-| [2. Make features real](#phase-2--make-the-features-real) | Every visible feature works against the real schema | 22–30 days |
-| [3. Production quality](#phase-3--production-quality) | Data model, mobile, Amharic, tests, operations, privacy | 24–33 days |
-| **Total** | | **≈ 57–78 developer-days** |
+| Phase | Goal | Effort (1 dev) | Status (2026-10-19) |
+|---|---|---|---|
+| [0. Contain](#phase-0--contain-today) | Stop the data exposure, get a green build | 1.5–2 days | Code done (0.5). **Dashboard and SQL steps 0.1–0.4 and 0.6 are still to do on the live project** |
+| [1. Secure foundation](#phase-1--secure-foundation) | Reproducible schema, real authorisation, server-side audit | 9–13 days | Code and migrations done; apply them to production (1.1) |
+| [2. Make features real](#phase-2--make-the-features-real) | Every visible feature works against the real schema | 22–30 days | 2.4 registration done |
+| [3. Production quality](#phase-3--production-quality) | Data model, mobile, Amharic, tests, operations, privacy | 24–33 days | 3.6 tests and CI done |
+| [FE. Frontend & UI track](#frontend--ui-track) | One consistent, fast, phone-first, bilingual interface | 13–19 days of new work (plus the UI steps of Phases 2–3 it groups) | Open |
+| **Total** | | **≈ 70–97 developer-days**, of which ≈ 16–22 are done | **≈ 55–75 days remaining** |
 
 Files used by this guide:
 
@@ -31,6 +32,25 @@ Files used by this guide:
 | [`20261019000005_app_alignment`](../db/migrations/20261019000005_app_alignment.sql) | Schema changes the Phase 2 code fixes need |
 | [`db/tests/verify_security.sql`](../db/tests/verify_security.sql) | Executable access checks; fails loudly, cleans up after itself |
 | [`db/tests/roundtrip.sh`](../db/tests/roundtrip.sh) | Proves every migration's down exactly reverses its up (`npm run db:test`, runs in CI) |
+| [`20261019000006_member_registry`](../db/migrations/20261019000006_member_registry.sql) | The lebu-form member register: `member_details`, member numbers, `register_member()`, photo bucket |
+| [`20261019000007_keepalive`](../db/migrations/20261019000007_keepalive.sql) | `public.keepalive()` for the keep-warm ping (reads no data) |
+| [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | CI: types, lint, unit tests, audit, migration round trip, e2e; deploys `main` |
+| [`.github/workflows/keepalive.yml`](../.github/workflows/keepalive.yml) | Pings Supabase and the app every 10 minutes |
+| [`tests/unit/`](../tests/unit/), [`e2e/`](../e2e/) | Vitest unit tests; Playwright tests and the local test stack |
+
+## Progress
+
+The code fixes are on these branches. Each builds on the previous one, so **merge them in this order** (each passes `tsc`, `eslint` and `next build`):
+
+| # | Branch | Closes |
+|---|---|---|
+| 1 | `fix/phase-0-build-and-credentials` | 0.5 green build and patched dependencies; published demo credentials and credential logging removed; `015` syntax error |
+| 2 | `feat/phase-1-auth-and-api-hardening` | 1.2 role model and page gates, 1.4 guarded and validated API (34 routes), 1.5 audit by triggers only, 1.7 `proxy.ts`, 1.8 security headers |
+| 3 | `feat/db-migrations-and-docs` | These docs; 1.1 dbmate migrations with up and down, adoption script and round-trip test; F-29 local Supabase URLs |
+| 4 | `feat/member-registration-lebu-form` | 2.4 registration matching the lebu-form register, member numbers, photos, lebu-form importer |
+| 5 | `ci/pipeline-tests-and-keepalive` | 3.6 unit and e2e tests and CI/CD; 0.6 keep-warm ping |
+
+Merging changes no data. The live project changes only when you run the Phase 0 steps and `npm run db:up` against it (or the pipeline does, once `PRODUCTION_DATABASE_URL` is set).
 
 
 ---
@@ -117,6 +137,7 @@ UPDATE public.profiles SET role = 'member' WHERE email = 'unknown@example.com';
 The production project was paused or deleted on 2026-10-16 and nobody noticed.
 - Move production to a paid plan (no auto-pause, daily backups; add Point-in-Time Recovery when available) **or** accept the risk explicitly in writing.
 - Add a free uptime check (UptimeRobot, Better Stack) on the app URL and on `https://<project-ref>.supabase.co/auth/v1/health`, alerting the maintainers' email.
+- **Keep-warm ping** ✔ **verified** (test stack): free projects are paused after about a week without activity, and the first request after a quiet spell is slow. [`.github/workflows/keepalive.yml`](../.github/workflows/keepalive.yml) calls `public.keepalive()` (migration `20261019000007`; returns the time, reads no data) every 10 minutes, and `<APP_URL>/api/keepalive`, which also warms the Vercel function. Setup is in [SETUP.md §8](SETUP.md#8-keep-warm-ping). GitHub can delay scheduled runs and switches them off after 60 days without commits, so point the uptime monitor above at `/api/keepalive` too; it then doubles as the health check (HTTP 503 when the database is unreachable). The ping keeps the project awake. It is not a backup and doesn't replace the paid-plan decision above.
 
 ---
 
@@ -463,13 +484,15 @@ Migration `20261019000005_app_alignment` adds `events.ministry_id`. Send the NOT
 Change the form's ministry `<select>` to list `ministries` (`id` as the value, `name` as the label), and display `ministries(name)` via a join. Later, retire `event_date`/`event_time` in favour of `start_date`/`end_date` (one source of time).
 
 ### 2.4 Member registration
-**Fixes:** F-20 (interim), F-27 · **Effort:** 3–4 days
+**Fixes:** F-20 (interim), F-27 · **Effort:** 3–4 days · ✔ **done** (branch 4)
 
-1. Migration `20261019000005_app_alignment` gives `profiles.id` a default, so registration without a login account stops failing. This is a stopgap until Step 3.1.
-2. Save the whole form. Define one zod schema mirroring [MEMBER_REGISTRATION_FORM_STRUCTURE.md](MEMBER_REGISTRATION_FORM_STRUCTURE.md); validate it in `POST /api/members`; store core fields in columns and the rest in a `details jsonb` column until the model is normalised (3.1).
-3. Upload the photo and ID image to a private `member-files` bucket (policy: staff only) and store the paths.
-4. Children: save them (create linked member records), or remove the "Child added" control. Never show success for unsaved data.
-5. Treat national-ID numbers and income ranges as sensitive: staff-only columns, or a separate staff-only table (see 3.10).
+The form now follows the **lebu-form register** the church already uses (same fields, bilingual labels, options, rules and `LKH-0001` numbering), so existing records import 1:1. Details: [MEMBER_REGISTRATION_FORM_STRUCTURE.md](MEMBER_REGISTRATION_FORM_STRUCTURE.md).
+1. One definition, [`lib/members/registration.ts`](../lib/members/registration.ts), drives the form, the API and the importer.
+2. Migration `20261019000006_member_registry`: `member_details` (staff-only, members read their own), a sequence for member numbers, `register_member()` writing `profiles` and `member_details` in one transaction, and a private `member-photos` bucket.
+3. Children and household members are saved; nothing shows success unless it was saved.
+4. [`scripts/import-lebu-form.mjs`](../scripts/import-lebu-form.mjs) copies the Google-Sheet register, keeping each member's number (`npm run import:lebu-form -- --endpoint --dry-run` first).
+
+Still open, in the [Frontend & UI track](#fe8-lebu-form-parity): editing an existing registry record, "My ID" and printable ID cards. National-ID numbers and income are no longer collected (lebu-form doesn't ask for them), which settles the sensitive-field question in 3.10 for now.
 
 ### 2.5 Attendance and reports
 **Fixes:** F-21, F-28, F-30 · **Effort:** 1.5–2 days · ✔ **verified** (reports query fix)
@@ -634,39 +657,20 @@ Desktop keeps the fixed sidebar (`hidden md:flex`). On phones, a top bar with a 
 Give the 19 icon-only buttons an `aria-label`, link every `<Label>` to its input with `htmlFor`, swap `text-slate-400` on white for `text-slate-500` or darker, replace the emoji icons, and stop nesting `<Link><Button>` (use `<Button asChild><Link/></Button>`). Run axe in the e2e tests (3.6).
 
 ### 3.6 Tests and CI
-**Fixes:** F-36 · **Effort:** 4–5 days
+**Fixes:** F-36 · **Effort:** 4–5 days · ✔ **done** (branch 5; every job run locally)
 
-`.github/workflows/ci.yml` ✎ **sketch:**
-```yaml
-name: ci
-on: [push, pull_request]
-jobs:
-  app:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npm run lint
-      - run: npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-  database:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-        with: { version: latest }
-      - run: supabase db start          # applies supabase/migrations from zero
-      - run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f db/tests/verify_security.sql
-```
-Then add:
-- **RLS tests** with pgTAP (`supabase test db`), one file per role group in 02.
-- **E2E** with Playwright: log in as each demo role and assert which nav items are visible; that restricted URLs redirect; the key flows (add transaction, add event, register member, schedule meeting).
-- **Branch protection:** `main` requires CI to pass and one review. Use small PRs, not mega-commits.
+| Layer | What | Command |
+|---|---|---|
+| Unit (Vitest) | Registration schema and conditional-field rules, Ethiopian calendar, input validation helpers, role map, the `[id]` route factory | `npm test` |
+| Database | Every migration up, down and up again with an identical schema; security migrations refuse to roll back; [`verify_security.sql`](../db/tests/verify_security.sql) (24 access checks) | `npm run db:test` |
+| End-to-end (Playwright) | Every gated page for every role; registration flow (validation messages, conditional fields, child rows, saved record and number); privilege escalation, anon access, audit-log forgery; keep-warm; desktop and phone smoke | `npm run test:e2e` |
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs all three on every pull request against a throwaway stack ([`e2e/stack`](../e2e/stack/): Postgres 17, GoTrue, PostgREST; test-only keys generated per run), then on `main` checks the production database is adopted, runs `npm run db:up` on it and deploys to Vercel. Setup: [SETUP.md §7](SETUP.md#7-cicd).
+
+Still to do:
+- **Branch protection:** `main` requires the three CI checks (Types…, Migrations…, End-to-end) and one review. Use small PRs, not mega-commits.
+- Add axe checks to the e2e tests (3.5) and screenshots per role (FE.10).
+- A test for every new route or migration, in the same PR.
 
 ### 3.7 Observability
 **Fixes:** F-38 · **Effort:** 1 day
@@ -696,14 +700,75 @@ The system holds national-ID numbers, income, family links, counselling and care
 
 ---
 
+## Frontend & UI track
+
+The interface work in one place. Several items already have a step above; this track sets the order and the standard, and adds what no step covered (marked **new**). Do FE.1–FE.3 before wiring more pages, so each page is fixed once.
+
+| Step | What | Effort | Covers |
+|---|---|---|---|
+| FE.1 | Responsive app shell | 1.5–2 d | 3.3 |
+| FE.2 | Role-aware navigation and dashboard | 1–2 d | **new** |
+| FE.3 | Data layer and page states | 4–6 d | 2.1, 2.9 |
+| FE.4 | One form standard | 2–3 d | **new** |
+| FE.5 | Shared building blocks; split the monolith pages | 3–4 d | **new** |
+| FE.6 | Design tokens, dark mode, Ethiopic type | 2–3 d | **new**, 3.4 (font) |
+| FE.7 | Real data everywhere | 8–10 d | 2.5, 2.7, 2.8 |
+| FE.8 | lebu-form parity | 3–4 d | **new** |
+| FE.9 | Amharic and accessibility | 8–10 d | 3.4, 3.5 |
+| FE.10 | Performance and visual QA | 2–3 d | **new** |
+
+### FE.1 Responsive app shell
+Most members and many leaders will use a phone. Keep the desktop sidebar (`hidden md:flex`); on phones, a top bar with the church name, a menu button that opens the same navigation in a sheet, and the user menu. Content uses `md:ml-64`, padding `p-4 md:p-8`. Wide tables become stacked cards below `md`. Done when every page passes the e2e "fits the screen" check at 360 px and 390 px (extend `e2e/tests/smoke.spec.ts` to all pages).
+
+### FE.2 Role-aware navigation and dashboard
+The sidebar and the dashboard's quick actions must come from `PAGE_ACCESS` in [`lib/auth/roles.ts`](../lib/auth/roles.ts), the same map the server gates use, so nobody sees a link that will bounce them. Give each role a useful home: members see their own record and upcoming events, finance sees the month's ledger summary, leaders see their ministry, staff see recent registrations.
+
+### FE.3 Data layer and page states
+- Reads in server components after `requirePageRole()` (2.1); client components receive data as props or call a typed route.
+- Every page has a loading state (`loading.tsx` or skeletons), an empty state that says what to do next, and an error state with a retry; add `app/dashboard/error.tsx` and `not-found.tsx`.
+- Every failed request shows a toast; submit buttons disable while saving; `AlertDialog` replaces `alert()`/`confirm()` (2.9).
+- Paginate members, transactions, documents and the audit log (the API already accepts `limit`/`offset`).
+
+### FE.4 One form standard
+Use the registration form as the template: react-hook-form with the **same zod schema the API validates with** (in `lib/api/schemas.ts` or the feature's `lib/` file), field errors under each field (`role="alert"`, `aria-invalid`, `aria-describedby`), the first error scrolled into view and focused, and server-side field errors mapped back onto the form. Convert the members edit dialog, financial, events/calendar, documents, ministries and the ministry pages.
+
+### FE.5 Shared building blocks; split the monolith pages
+Ten near-identical CRUD pages (3,901 lines) and the old 1,338-line registration page show the cost of copy-paste. Build once, in `components/`: `PageHeader`, `DataTable` (search, sort, pagination, mobile cards), `EntityDialog` (form + save/cancel), `ConfirmDelete`, `EmptyState`, `StatCard`. Then each ministry page becomes configuration plus its own columns and fields. Target: no page file over about 300 lines.
+
+### FE.6 Design tokens, dark mode, Ethiopic type
+- Replace the 464 hard-coded `bg-white`/`text-slate-*` classes with the shadcn tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`). Until that's done, set `defaultTheme="light"`: today dark-mode phones get unreadable mixed themes.
+- Add Noto Sans Ethiopic next to the Latin font (3.4 step 2) so Amharic renders consistently on every device; rename `--font-fredoka` to `--font-sans`.
+- Money as `ETB` via `Intl.NumberFormat`, dates via `Intl.DateTimeFormat`, with the Ethiopian date alongside where the church uses it (`lib/ethiopian-calendar.ts` already does this on the registration form).
+- Use the church's colours and logo consistently (login, sidebar, ID cards).
+
+### FE.7 Real data everywhere
+No invented numbers (F-28): wire the 12 mock ministry pages (2.7) with the FE.5 components, fix attendance and reports (2.5), delete the orphan pages and routes (2.8). Where data doesn't exist yet, show an empty state, never a placeholder figure.
+
+### FE.8 lebu-form parity
+What staff can do in lebu-form today and must not lose when they switch:
+- **Edit a member's registry record** (all sections, photo replace), not only the profile fields.
+- **"My ID"**: a member sees their own card (photo, name, `LKH-` number, QR) and can save it to the phone.
+- **Printable ID cards**: select members, print 10 per A4 sheet at card size, matching the current design.
+- **Export** the register to CSV/Excel for the office.
+- Search by member number as well as name (the API supports it; add it to the members page).
+
+### FE.9 Amharic and accessibility
+Extract the strings and translate (3.4); the registration form's bilingual labels show the target. Accessibility (3.5): labels on the 19 icon-only buttons, `htmlFor` on every label, contrast (`text-slate-500` or darker on white), visible focus, no `<Link><Button>` nesting. Add `@axe-core/playwright` to the e2e tests and fail CI on serious violations.
+
+### FE.10 Performance and visual QA
+- Load `recharts` and other heavy client-only components with `next/dynamic`; use `next/image` for photos; drop the 34 unused dependencies (3.9). Budget: under 200 kB of JavaScript on the login page and first load of `/dashboard` under 2.5 s on a mid-range phone over 4G (Lighthouse).
+- Playwright screenshots of each page for each role at 390 px and 1280 px, compared in CI (`toHaveScreenshot`), so layout regressions show up in the PR.
+
+---
+
 ## Definition of production-ready
 
 - [ ] Phase 0 complete; `verify_security.sql` passes on production
-- [ ] `supabase db reset` rebuilds the schema from migrations; production, staging and local match
-- [ ] CI is green (types, lint, build, RLS tests, e2e smoke) and required on `main`
+- [ ] `npm run db:up` on an empty database rebuilds the schema; production (adopted), staging and local are on the same migration (`npm run db:status`)
+- [ ] CI is green (types, lint, unit, migrations round trip, RLS checks, e2e) and required on `main`; deploys go through the pipeline
 - [ ] Every page works for every role as described in [ROLES_AND_ACCESS.md](ROLES_AND_ACCESS.md); no mock data
 - [ ] Audit log populated by triggers; admins can review it
 - [ ] Backups automated and a restore rehearsed
-- [ ] Usable on a phone; Amharic covers every screen
+- [ ] Frontend & UI track done: usable on a phone, one form standard, no mock data, Amharic covers every screen, axe-clean
 - [ ] Privacy notice approved; sign-up by invitation only
 - [ ] [STATUS.md](STATUS.md) updated to say all of the above honestly

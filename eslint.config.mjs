@@ -44,10 +44,10 @@ export default [
     },
   },
   {
-    // Node scripts (database tooling): Node globals instead of browser ones
-    files: ["db/**/*.mjs"],
+    // Node scripts (database tooling, test stack, importer): Node globals instead of browser ones
+    files: ["db/**/*.mjs", "e2e/**/*.mjs", "scripts/**/*.mjs"],
     languageOptions: {
-      globals: { console: "readonly", process: "readonly", URL: "readonly" },
+      globals: { console: "readonly", process: "readonly", URL: "readonly", fetch: "readonly", Buffer: "readonly" },
     },
   },
 ];

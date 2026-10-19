@@ -45,9 +45,9 @@ Side panel: **photo** (choose a file or use the camera; cropped to a 4:5 portrai
 
 ```bash
 # dry run first: validates every record and reports problems, writes nothing
-node --env-file=.env.local scripts/import-lebu-form.mjs --endpoint --dry-run
+npm run import:lebu-form -- --endpoint --dry-run
 # then for real (set ALLOW_MEMBER_IMPORT=true, LEBU_FORM_ENDPOINT, LEBU_FORM_PASSCODE in .env.local)
-node --env-file=.env.local scripts/import-lebu-form.mjs --endpoint --photos
+npm run import:lebu-form -- --endpoint --photos
 ```
 
 Instead of `--endpoint`, `--file members.json` reads a saved copy of the Apps Script `list` response. Records without a first name, father's name, sex or phone are reported and skipped. Optional values the form would never produce (for example "type O" typed into the blood-group column) are dropped from that record and reported.

@@ -4,7 +4,9 @@ Web platform for church operations: members, ministries, events, finances, commu
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 / shadcn/ui · Supabase (Postgres, Auth, Storage)
 
-> ⚠️ **Status: prototype, not production-ready.** The production build currently fails, and the database needs the security fixes in [docs/REMEDIATION_GUIDE.md](docs/REMEDIATION_GUIDE.md) (Phase 0) before it holds real member data. What works today: [docs/STATUS.md](docs/STATUS.md).
+> ⚠️ **Status: not production-ready yet.** The build, the API and page access, the migrations and member registration are fixed, and CI tests every change. The live database still needs the security steps in [docs/REMEDIATION_GUIDE.md](docs/REMEDIATION_GUIDE.md) (Phase 0) before it holds real member data, and several modules still show mock data. What works today: [docs/STATUS.md](docs/STATUS.md).
+
+[![CI](https://github.com/Ayenewtarekegn18/lcms/actions/workflows/ci.yml/badge.svg)](https://github.com/Ayenewtarekegn18/lcms/actions/workflows/ci.yml)
 
 ## Quick start
 
@@ -20,12 +22,13 @@ Building the database for a new Supabase project, creating the first admin and d
 
 | | |
 |---|---|
-| [Setup](docs/SETUP.md) | Install, environment variables, database order, deploy |
+| [Setup](docs/SETUP.md) | Install, environment variables, migrations, testing, CI/CD, keep-warm ping |
 | [Status](docs/STATUS.md) | What works and what doesn't, per module |
 | [Remediation guide](docs/REMEDIATION_GUIDE.md) | Step-by-step fix plan with code and SQL |
 | [Architecture review](docs/ARCHITECTURE_REVIEW.md) | Findings, root causes, target architecture |
 | [Architecture](docs/ARCHITECTURE.md) | How the system is built |
 | [Roles and access](docs/ROLES_AND_ACCESS.md) | Who can see and do what |
+| [Member registration](docs/MEMBER_REGISTRATION_FORM_STRUCTURE.md) | The lebu-form register: fields, rules, numbering, import |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common errors and fixes |
 
 ## Scripts
@@ -35,6 +38,11 @@ Building the database for a new Supabase project, creating the first admin and d
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build / serve |
 | `npm run lint` | ESLint |
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:e2e` | End-to-end tests (Playwright; needs the test stack, see [SETUP §6](docs/SETUP.md#6-testing)) |
+| `npm run db:up` / `db:down` / `db:status` | Apply, roll back or list database migrations (`DATABASE_URL`) |
+| `npm run db:test` | Prove every migration reverses cleanly, then run the RLS checks |
+| `npm run import:lebu-form` | Import members from the lebu-form register |
 
 ## Security
 

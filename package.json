@@ -11,7 +11,13 @@
     "db:down": "node --env-file-if-exists=.env.local node_modules/dbmate/dist/cli.js --no-dump-schema --migrations-table dbmate.schema_migrations rollback",
     "db:status": "node --env-file-if-exists=.env.local node_modules/dbmate/dist/cli.js --no-dump-schema --migrations-table dbmate.schema_migrations status",
     "db:new": "node node_modules/dbmate/dist/cli.js new",
-    "db:test": "bash db/tests/roundtrip.sh"
+    "db:test": "bash db/tests/roundtrip.sh",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "e2e:stack": "docker compose -f e2e/stack/docker-compose.yml up -d --wait",
+    "e2e:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON e2e/stack/seed.mjs",
+    "import:lebu-form": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-lebu-form.mjs"
   },
   "engines": {
     "node": ">=22.18"
@@ -75,6 +81,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^19",
@@ -87,6 +94,15 @@
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
     "typescript": "^5",
-    "typescript-eslint": "^8"
+    "typescript-eslint": "^8",
+    "vite": "8.3.1",
+    "vitest": "5.0.3"
+  },
+  "overrides": {
+    "rolldown": "1.2.12",
+    "tinybench": "6.2.0",
+    "vite": {
+      "postcss": "8.5.28"
+    }
   }
 }
