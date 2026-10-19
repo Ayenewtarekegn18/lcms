@@ -5,10 +5,10 @@
 -- Demo User IDs (these should be replaced with actual auth user IDs after creation via Supabase)
 -- We'll use placeholder UUIDs that need to be replaced
 
--- Admin Account: admin@church.local / Password: Admin123!
--- Ministry Leader Account: leader@church.local / Password: Leader123!
--- Member Account: member@church.local / Password: Member123!
--- Counselor Account: counselor@church.local / Password: Counselor123!
+-- Accounts: admin@church.local, leader@church.local, member@church.local, counselor@church.local
+-- Passwords are not stored in the repo. Create the auth users with scripts/setup-demo-accounts.js,
+-- which reads DEMO_ADMIN_PASSWORD / DEMO_USER_PASSWORD from .env.local (see docs/DEMO_SETUP.md).
+-- DEV/DEMO ONLY: never run this file against a production project.
 
 -- Create demo profiles (these UUIDs are placeholders - use actual auth.users IDs)
 -- You'll need to manually create these auth users in Supabase and note their IDs

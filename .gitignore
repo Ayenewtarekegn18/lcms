@@ -32,9 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # project docs (keep local only)
 docs/GET_SUPABASE_CREDENTIALS.md
+
+# large local media (recordings must never be committed)
+*.wav
 
 # vercel
 .vercel

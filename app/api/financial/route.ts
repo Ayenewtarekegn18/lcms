@@ -47,20 +47,21 @@ export async function GET(req: Request) {
     )
   }
 
-  const transactions = (rows || []).map((t: { transaction_type?: string; type?: string; [k: string]: unknown }) => ({
-    ...t,
-    type: t.transaction_type ?? t.type,
+  const transactions = (rows || []).map((t) => ({
+    ...(t as Record<string, unknown>),
+    type: (t as { transaction_type?: string; type?: string }).transaction_type ?? (t as { type?: string }).type,
+    amount: Number((t as { amount?: unknown }).amount) || 0,
   }))
   const totals = {
     income: transactions
-      .filter((t) => txType(t) === 'income')
+      .filter((t) => t.type === 'income')
       .reduce((sum, t) => sum + (t.amount || 0), 0),
     expense: transactions
-      .filter((t) => txType(t) === 'expense')
+      .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + (t.amount || 0), 0),
     total: transactions.reduce((sum, t) => {
-      if (txType(t) === 'income') return sum + (t.amount || 0)
-      if (txType(t) === 'expense') return sum - (t.amount || 0)
+      if (t.type === 'income') return sum + (t.amount || 0)
+      if (t.type === 'expense') return sum - (t.amount || 0)
       return sum
     }, 0),
   }

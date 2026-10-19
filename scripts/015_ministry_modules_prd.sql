@@ -333,9 +333,9 @@ BEGIN
     EXECUTE format('CREATE POLICY "allow_select_%s" ON public.%I FOR SELECT TO authenticated USING (true)', t, t);
     EXECUTE format('DROP POLICY IF EXISTS "allow_all_%s" ON public.%I', t, t);
     EXECUTE format('CREATE POLICY "allow_all_%s" ON public.%I FOR ALL TO authenticated USING (
-      (SELECT COALESCE(is_admin, false) OR role IN (''admin'',''elder'',''ministry_leader'',''finance'')) FROM public.profiles WHERE id = auth.uid()
+      (SELECT COALESCE(is_admin, false) OR role IN (''admin'',''elder'',''ministry_leader'',''finance'') FROM public.profiles WHERE id = auth.uid())
     ) WITH CHECK (
-      (SELECT COALESCE(is_admin, false) OR role IN (''admin'',''elder'',''ministry_leader'',''finance'')) FROM public.profiles WHERE id = auth.uid()
+      (SELECT COALESCE(is_admin, false) OR role IN (''admin'',''elder'',''ministry_leader'',''finance'') FROM public.profiles WHERE id = auth.uid())
     )', t, t);
   END LOOP;
 END $$;
