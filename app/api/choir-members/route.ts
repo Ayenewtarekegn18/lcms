@@ -1,23 +1,37 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { STAFF } from '@/lib/auth/roles'
+import { parseBody, pageRange, opt, uuid } from '@/lib/api/validation'
+
+const createSchema = z
+  .object({
+    member_id: uuid,
+    voice_part: opt(z.string().trim().max(50)),
+  })
+  .strict()
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { data, error } = await supabase.from('choir_members').select('*, member:profiles!member_id(id, first_name, last_name)').order('join_date', { ascending: false })
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json(data || [])
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
+  const { searchParams } = new URL(req.url)
+
+  const { data, error } = await auth.supabase
+    .from('choir_members')
+    .select('*, member:profiles!member_id(id, first_name, last_name)')
+    .order('join_date', { ascending: false })
+    .range(...pageRange(searchParams))
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { member_id, voice_part } = body
-  if (!member_id) return NextResponse.json({ error: 'member_id required' }, { status: 400 })
-  const { data, error } = await supabase.from('choir_members').insert([{ member_id, voice_part: voice_part || null }]).select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, createSchema)
+  if (body.error) return body.error
+
+  const { data, error } = await auth.supabase.from('choir_members').insert([body.data]).select().single()
+  if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
 }

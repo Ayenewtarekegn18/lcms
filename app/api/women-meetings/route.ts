@@ -1,32 +1,33 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { STAFF } from '@/lib/auth/roles'
+import { parseBody, pageRange, cleanSearch } from '@/lib/api/validation'
+import { womenMeeting } from '@/lib/api/schemas'
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole()
+  if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
-  const search = searchParams.get('search')?.trim()
-  let query = supabase.from('women_meetings').select('*').order('meeting_date', { ascending: false })
-  const { data: rows, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  let list = rows || []
-  if (search) list = list.filter((r: { title?: string }) => (r.title || '').toLowerCase().includes(search.toLowerCase()))
-  return NextResponse.json(list)
+  const search = cleanSearch(searchParams.get('search'))
+
+  let query = auth.supabase.from('women_meetings').select('*').order('meeting_date', { ascending: false })
+  if (search) query = query.ilike('title', `%${search}%`)
+  const { data, error } = await query.range(...pageRange(searchParams))
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { title, meeting_date, meeting_time, location, attendees_count, minutes_text } = body
-  if (!title || !meeting_date) return NextResponse.json({ error: 'title and meeting_date required' }, { status: 400 })
-  const { data, error } = await supabase
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, womenMeeting)
+  if (body.error) return body.error
+
+  const { data, error } = await auth.supabase
     .from('women_meetings')
-    .insert([{ title, meeting_date, meeting_time: meeting_time || null, location: location || null, attendees_count: attendees_count ?? 0, minutes_text: minutes_text || null }])
+    .insert([{ ...body.data, attendees_count: body.data.attendees_count ?? 0 }])
     .select()
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
 }

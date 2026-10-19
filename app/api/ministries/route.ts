@@ -1,83 +1,45 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { STAFF } from '@/lib/auth/roles'
+import { parseBody, opt, text, uuid } from '@/lib/api/validation'
+
+const createSchema = z
+  .object({
+    name: text(200),
+    description: opt(z.string().trim().max(5000)),
+    leader_id: opt(uuid),
+    meeting_day: opt(z.string().trim().max(50)),
+    meeting_schedule: opt(z.string().trim().max(100)), // older form field, stored as meeting_day
+    meeting_time: opt(z.string().trim().max(50)),
+    location: opt(z.string().trim().max(200)),
+  })
+  .strict()
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-
+  const auth = await requireRole()
+  if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
-  const activeOnly = searchParams.get('active') === 'true'
 
-  let query = supabase
-    .from('ministries')
-    .select('*')
-    .order('name', { ascending: true })
-
-  if (activeOnly) {
-    query = query.eq('is_active', true)
-  }
-
-  const { data: ministries, error } = await query
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    )
-  }
-
-  return NextResponse.json(ministries)
+  let query = auth.supabase.from('ministries').select('*').order('name', { ascending: true })
+  if (searchParams.get('active') === 'true') query = query.eq('is_active', true)
+  const { data, error } = await query.limit(500)
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const body = await req.json()
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, createSchema)
+  if (body.error) return body.error
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-
-  const { data: ministry, error } = await supabase
+  const { meeting_schedule, meeting_day, ...fields } = body.data
+  const { data, error } = await auth.supabase
     .from('ministries')
-    .insert([
-      {
-        name: body.name,
-        description: body.description,
-        leader_id: body.leader_id || null,
-        meeting_day: body.meeting_day ?? body.meeting_schedule ?? null,
-        meeting_time: body.meeting_time ?? null,
-        location: body.location ?? null,
-        is_active: true,
-      },
-    ])
+    .insert([{ ...fields, meeting_day: meeting_day ?? meeting_schedule ?? null, is_active: true }])
     .select()
     .single()
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    )
-  }
-
-  return NextResponse.json(ministry, { status: 201 })
+  if (error) return dbError(error)
+  return NextResponse.json(data, { status: 201 })
 }

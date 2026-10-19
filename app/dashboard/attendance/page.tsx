@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { logAudit } from '@/lib/audit'
 import { toast } from 'sonner'
 
 export default function AttendancePage() {
@@ -123,8 +122,6 @@ export default function AttendancePage() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || res.statusText)
       }
-      const data = await res.json()
-      await logAudit({ action: 'create', resource_type: 'attendance', resource_id: Array.isArray(data) ? data[0]?.id : data?.id, details: { member_id: formData.member_id, date: formData.attendance_date } })
       setModalOpen(false)
       fetchAttendance()
     } catch (error) {

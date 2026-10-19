@@ -1,62 +1,45 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { STAFF } from '@/lib/auth/roles'
+import { parseBody, pageRange, cleanSearch } from '@/lib/api/validation'
+import { spiritualCandidate } from '@/lib/api/schemas'
+
+type CandidateRow = { member?: { first_name?: string | null; last_name?: string | null } | null }
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
-  const search = searchParams.get('search')?.trim()
-  const status = searchParams.get('status')
+  const search = cleanSearch(searchParams.get('search'))?.toLowerCase()
+  const status = spiritualCandidate.shape.status.safeParse(searchParams.get('status') ?? undefined)
 
-  let query = supabase
+  let query = auth.supabase
     .from('spiritual_candidates')
-    .select(`
-      *,
-      member:profiles!member_id(id, first_name, last_name, email, phone),
-      mentor:profiles!mentor_id(id, first_name, last_name)
-    `)
+    .select('*, member:profiles!member_id(id, first_name, last_name, email, phone), mentor:profiles!mentor_id(id, first_name, last_name)')
     .order('joined_date', { ascending: false })
+  if (status.success && status.data) query = query.eq('status', status.data)
+  const { data, error } = await query.range(...pageRange(searchParams))
+  if (error) return dbError(error)
 
-  if (status) query = query.eq('status', status)
-  const { data: rows, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-
-  let list = rows || []
-  if (search) {
-    const s = search.toLowerCase()
-    list = list.filter((r: { member?: { first_name?: string; last_name?: string } }) => {
-      const m = r.member as { first_name?: string; last_name?: string } | null
-      if (!m) return false
-      const name = `${m.first_name || ''} ${m.last_name || ''}`.toLowerCase()
-      return name.includes(s)
-    })
-  }
-  return NextResponse.json(list)
+  // The name lives on the joined profile, so search is applied to the (bounded) page.
+  const list = (data ?? []) as CandidateRow[]
+  const filtered = search
+    ? list.filter((r) => `${r.member?.first_name ?? ''} ${r.member?.last_name ?? ''}`.toLowerCase().includes(search))
+    : list
+  return NextResponse.json(filtered)
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, spiritualCandidate)
+  if (body.error) return body.error
 
-  const body = await req.json()
-  const { member_id, status: st, mentor_id, progress_notes, joined_date, baptism_date } = body
-  if (!member_id) return NextResponse.json({ error: 'member_id required' }, { status: 400 })
-
-  const { data: row, error } = await supabase
+  const { data, error } = await auth.supabase
     .from('spiritual_candidates')
-    .insert([{
-      member_id,
-      status: st || 'salvation_candidate',
-      mentor_id: mentor_id || null,
-      progress_notes: progress_notes || null,
-      joined_date: joined_date || null,
-      baptism_date: baptism_date || null,
-    }])
+    .insert([{ ...body.data, status: body.data.status ?? 'salvation_candidate' }])
     .select()
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json(row, { status: 201 })
+  if (error) return dbError(error)
+  return NextResponse.json(data, { status: 201 })
 }

@@ -1,39 +1,32 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { STAFF } from '@/lib/auth/roles'
+import { parseBody, pageRange, cleanSearch } from '@/lib/api/validation'
+import { spiritualClass } from '@/lib/api/schemas'
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole()
+  if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
-  const search = searchParams.get('search')?.trim()
+  const search = cleanSearch(searchParams.get('search'))
 
-  let query = supabase
+  let query = auth.supabase
     .from('spiritual_classes')
     .select('*, instructor:profiles!instructor_id(id, first_name, last_name)')
     .order('class_date', { ascending: false })
-  const { data: rows, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  let list = rows || []
-  if (search) {
-    const s = search.toLowerCase()
-    list = list.filter((r: { title?: string }) => (r.title || '').toLowerCase().includes(s))
-  }
-  return NextResponse.json(list)
+  if (search) query = query.ilike('title', `%${search}%`)
+  const { data, error } = await query.range(...pageRange(searchParams))
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { title, class_date, instructor_id, location, max_attendees } = body
-  if (!title || !class_date) return NextResponse.json({ error: 'title and class_date required' }, { status: 400 })
-  const { data, error } = await supabase
-    .from('spiritual_classes')
-    .insert([{ title, class_date, instructor_id: instructor_id || null, location: location || null, max_attendees: max_attendees || null }])
-    .select()
-    .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  const auth = await requireRole(...STAFF)
+  if (auth.error) return auth.error
+  const body = await parseBody(req, spiritualClass)
+  if (body.error) return body.error
+
+  const { data, error } = await auth.supabase.from('spiritual_classes').insert([body.data]).select().single()
+  if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
 }

@@ -1,89 +1,28 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { PAGE_ACCESS } from '@/lib/auth/roles'
 
-export async function POST(req: Request) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const body = await req.json()
-  const { action, resource_type, resource_id, details } = body
-
-  if (!action || !resource_type) {
-    return NextResponse.json(
-      { error: 'action and resource_type are required' },
-      { status: 400 }
-    )
-  }
-
-  const { error } = await supabase.from('audit_log').insert([
-    {
-      user_id: user.id,
-      user_email: user.email,
-      action,
-      resource_type,
-      resource_id: resource_id ?? null,
-      details: details ?? null,
-    },
-  ])
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
-  }
-
-  return NextResponse.json({ ok: true }, { status: 201 })
-}
+// Read-only. Audit rows are written by database triggers
+// (docs/remediation/sql/03_audit_log.sql), so they can't be skipped or forged
+// from the browser. There is deliberately no POST handler.
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
-
-  const isAdmin = profile?.is_admin === true
-
-  if (!isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireRole(...PAGE_ACCESS.auditLog)
+  if (auth.error) return auth.error
 
   const { searchParams } = new URL(req.url)
-  const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500)
-  const resourceType = searchParams.get('resource_type')
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '', 10) || 100, 1), 500)
+  const resourceType = searchParams.get('resource_type')?.replace(/[^a-z_]/g, '').slice(0, 64)
 
-  let query = supabase
+  let query = auth.supabase
     .from('audit_log')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(limit)
+  if (resourceType) query = query.eq('resource_type', resourceType)
 
-  if (resourceType) {
-    query = query.eq('resource_type', resourceType)
-  }
-
+  // A missing audit_log table surfaces as an error: an empty log would look clean.
   const { data, error } = await query
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
-  }
-
-  return NextResponse.json(data || [])
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }

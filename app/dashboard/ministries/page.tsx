@@ -15,7 +15,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { logAudit } from '@/lib/audit'
 import { toast } from 'sonner'
 
 export default function MinistriesPage() {
@@ -73,8 +72,6 @@ export default function MinistriesPage() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || res.statusText)
       }
-      const created = await res.json()
-      await logAudit({ action: 'create', resource_type: 'ministry', resource_id: created?.id, details: { name: formData.name } })
       setModalOpen(false)
       fetchMinistries()
     } catch (error) {

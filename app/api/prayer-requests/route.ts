@@ -1,27 +1,44 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireRole, dbError } from '@/lib/auth/guards'
+import { parseBody, pageRange, opt, text, uuid } from '@/lib/api/validation'
+
+// Any member may submit and read their own requests; admin/elder see all (enforced by RLS).
+const createSchema = z
+  .object({
+    group_id: opt(uuid),
+    request_text: text(5000),
+    status: opt(z.string().trim().max(50)),
+  })
+  .strict()
 
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireRole()
+  if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
-  const group_id = searchParams.get('group_id')
-  let query = supabase.from('prayer_requests').select('*, requested_by:profiles!requested_by_id(id, first_name, last_name)').order('created_at', { ascending: false })
-  if (group_id) query = query.eq('group_id', group_id)
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json(data || [])
+  const groupId = uuid.safeParse(searchParams.get('group_id'))
+
+  let query = auth.supabase
+    .from('prayer_requests')
+    .select('*, requested_by:profiles!requested_by_id(id, first_name, last_name)')
+    .order('created_at', { ascending: false })
+  if (groupId.success) query = query.eq('group_id', groupId.data)
+  const { data, error } = await query.range(...pageRange(searchParams))
+  if (error) return dbError(error)
+  return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
-  const { group_id, request_text, status } = body
-  if (!request_text) return NextResponse.json({ error: 'request_text required' }, { status: 400 })
-  const { data, error } = await supabase.from('prayer_requests').insert([{ group_id: group_id || null, requested_by_id: user.id, request_text, status: status || 'active' }]).select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  const auth = await requireRole()
+  if (auth.error) return auth.error
+  const body = await parseBody(req, createSchema)
+  if (body.error) return body.error
+
+  const { data, error } = await auth.supabase
+    .from('prayer_requests')
+    .insert([{ ...body.data, requested_by_id: auth.user.id, status: body.data.status ?? 'active' }])
+    .select()
+    .single()
+  if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
 }
