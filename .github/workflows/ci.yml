@@ -1,0 +1,157 @@
+# Checks every pull request and every push to main; deploys main once everything passes.
+# Secrets and the one-time setup are described in docs/SETUP.md → "CI/CD".
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  quality:
+    name: Types, lint, unit tests, audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
+      - name: Known vulnerabilities in production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  database:
+    name: Migrations (up/down round trip) and RLS checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.5
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Use psql and pg_dump from the service container (client always matches the server)
+        run: |
+          echo "PSQL=docker exec -i ${{ job.services.postgres.id }} psql -U postgres" >> "$GITHUB_ENV"
+          echo "PG_DUMP=docker exec ${{ job.services.postgres.id }} pg_dump -U postgres" >> "$GITHUB_ENV"
+      - name: Supabase roles and auth/storage stand-ins
+        run: $PSQL -q -v ON_ERROR_STOP=1 < db/tests/supabase_shim.sql
+      - name: Every migration up, down and up again; verify_security.sql
+        run: npm run db:test
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      STACK: docker compose -f e2e/stack/docker-compose.yml
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Start Postgres and GoTrue
+        run: $STACK up -d --wait db auth
+      - name: Migrate the test database
+        run: npm run db:up
+      - name: Start PostgREST and the API gateway
+        run: |
+          $STACK up -d rest
+          nohup node e2e/stack/gateway.mjs > gateway.log 2>&1 &
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:54321/rest/v1/ || true)
+            [ "$code" = 200 ] || [ "$code" = 401 ] && break
+            sleep 1
+          done
+          node e2e/stack/keys.mjs >> "$GITHUB_ENV"
+      - name: Seed one user per role
+        run: npm run e2e:seed
+      - name: Build
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Playwright
+        run: npm run test:e2e
+      - name: Stack logs
+        if: failure()
+        run: |
+          $STACK logs --no-color > stack.log 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: |
+            playwright-report/
+            test-results/
+            stack.log
+            gateway.log
+          retention-days: 7
+
+  deploy:
+    name: Migrate and deploy production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [quality, database, e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # Add required reviewers to this environment (Settings → Environments) to approve each release.
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Check the production database is under dbmate
+        if: env.DATABASE_URL != ''
+        run: |
+          # A database created before the migrations existed must be adopted once
+          # (db/scripts/adopt_existing_database.sql), or dbmate would re-run the baseline on it.
+          state=$(psql "$DATABASE_URL" -tA -c "SELECT CASE WHEN to_regclass('dbmate.schema_migrations') IS NOT NULL THEN 'managed' WHEN to_regclass('public.profiles') IS NOT NULL THEN 'unadopted' ELSE 'empty' END")
+          echo "production database: $state"
+          if [ "$state" = unadopted ]; then
+            echo "::error::Run db/scripts/adopt_existing_database.sql on production first (docs/REMEDIATION_GUIDE.md step 1.1)"
+            exit 1
+          fi
+      - name: Migrate production
+        if: env.DATABASE_URL != ''
+        run: npm run db:up
+      - name: Deploy to Vercel
+        if: env.VERCEL_TOKEN != ''
+        run: |
+          npx --yes vercel@62.2.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@62.2.0 build --prod --token="$VERCEL_TOKEN"
+          npx --yes vercel@62.2.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      - name: Nothing to do
+        if: env.DATABASE_URL == '' && env.VERCEL_TOKEN == ''
+        run: echo "::notice::PRODUCTION_DATABASE_URL and VERCEL_TOKEN are not set; skipped migrating and deploying (docs/SETUP.md → CI/CD)"
