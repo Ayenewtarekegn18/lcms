@@ -21,7 +21,7 @@
 
 ## Create them
 
-Prerequisites: the database is built ([SETUP.md §3](SETUP.md#3-build-the-database-new-project)), including remediation `01` (which adds `profiles.role`), and you're on Node ≥ 20.9.
+Prerequisites: the database is built with `npm run db:up` ([SETUP.md §3](SETUP.md#3-build-the-database)), which includes the role column, and you're on Node ≥ 20.9.
 
 1. In `.env.local` of the **dev/staging** project, set `SUPABASE_SERVICE_ROLE_KEY`, `DEMO_ADMIN_PASSWORD` and `DEMO_USER_PASSWORD` (12+ characters each; e.g. `openssl rand -base64 18`), and set `ALLOW_DEMO_SEED=true`. The script refuses to run without that flag.
 2. Run:
@@ -32,7 +32,7 @@ Prerequisites: the database is built ([SETUP.md §3](SETUP.md#3-build-the-databa
 
 The script never prints passwords. "User already exists" means the account is already there; delete it in Auth → Users to recreate it.
 
-Don't use `scripts/005_demo_accounts.sql`, `006_demo_sample_data.sql` or `009_corrected_demo_data.sql`. They use placeholder UUIDs, conflict with the script, and fail on a fresh database. Create sample ministries, events and transactions through the app, or (after [Remediation 1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible)) in `supabase/seed.sql`.
+Don't use `scripts/legacy/005_demo_accounts.sql`, `006_demo_sample_data.sql` or `009_corrected_demo_data.sql`. They use placeholder UUIDs, conflict with the script, and fail on a fresh database. Create sample ministries, events and transactions through the app, or (after [Remediation 1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible)) in `supabase/seed.sql`.
 
 ## What to try per role
 

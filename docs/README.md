@@ -12,6 +12,6 @@
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | fix a specific error message |
 | [PRD.md](PRD.md) | read the original product requirements |
 | [MEMBER_REGISTRATION_FORM_STRUCTURE.md](MEMBER_REGISTRATION_FORM_STRUCTURE.md) | read the spec for the 5-step registration form |
-| [remediation/sql/](remediation/sql/) | get the tested SQL used by the guide (`inspect`, `01`–`05`, `verify`) |
+| [../db/](../db/) | find the migrations (`db/migrations`, dbmate up/down), one-off scripts (`db/scripts`) and database tests (`db/tests`) |
 
 `GET_SUPABASE_CREDENTIALS.md`, if present, is a local-only file (git-ignored); SETUP.md §2 covers the same ground.

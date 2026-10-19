@@ -133,7 +133,7 @@ flowchart TB
 ### 5.4 Role model
 There are two sources of truth: `profiles.is_admin` (001) and `profiles.role` (014, free text with no CHECK). Different layers read different ones: the layout and the audit API read `is_admin`, RLS 015 reads `role`, and the docs say both. Neither is protected from the user editing their own row.
 
-**Root cause:** migration 001's policies on `profiles` sub-selected `profiles`, which raises *infinite recursion* (42P17). The "fix" (007/008) removed the checks instead of moving the role lookup into a `SECURITY DEFINER` helper. [01_emergency_lockdown.sql](remediation/sql/01_emergency_lockdown.sql) restores one role column (with a CHECK), the recursion-safe helpers `current_app_role()` and `has_role(...)`, and a trigger that blocks self-promotion.
+**Root cause:** migration 001's policies on `profiles` sub-selected `profiles`, which raises *infinite recursion* (42P17). The "fix" (007/008) removed the checks instead of moving the role lookup into a `SECURITY DEFINER` helper. [01_emergency_lockdown.sql](../db/scripts/emergency_lockdown.sql) restores one role column (with a CHECK), the recursion-safe helpers `current_app_role()` and `has_role(...)`, and a trigger that blocks self-promotion.
 
 ---
 
@@ -163,7 +163,7 @@ There are 66 tables across 7 scripts: 001 (6), 003 (17), 004 (5), 011 (2), 012 (
 | Tables in repo migrations but **absent in production** | 38 | All of 011, 012, 014 and 015: announcements, documents, audit log and every PRD ministry table |
 | Tables the code calls that **exist nowhere** | 9 | `attendance`, `counseling_records`, `health_wellness`, `facility_management`, `media_communications`, `music_ministry`, `worship_services`, `community_service`, `education_training` |
 
-  So Communications, Documents, Audit Log, Women and Spiritual Service cannot work in production as deployed. (A PostgREST 404 means the table isn't exposed; confirm with [inspect_schema.sql](remediation/sql/inspect_schema.sql).)
+  So Communications, Documents, Audit Log, Women and Spiritual Service cannot work in production as deployed. (A PostgREST 404 means the table isn't exposed; confirm with [inspect_schema.sql](../db/scripts/inspect_schema.sql).)
 
 ### 6.3 Modelling issues
 - **Person ≠ account (F-20).** `profiles` serves as both "church member record" and "login account" (`id = auth.users.id`). Registering a member who has no login needs an id that doesn't exist, which is why `010` dropped the FK and the registration insert fails. **Target:** a `members` table for every person, plus `profiles` for login accounts with an optional `member_id`. Families, ministries, attendance and giving point at `members`.
@@ -174,7 +174,7 @@ There are 66 tables across 7 scripts: 001 (6), 003 (17), 004 (5), 011 (2), 012 (
 
 ### 6.4 RLS posture: before and after remediation
 
-| Data | Today (live / repo) | After [01](remediation/sql/01_emergency_lockdown.sql) + [02](remediation/sql/02_rls_rewrite.sql) |
+| Data | Today (live / repo) | After [01](../db/scripts/emergency_lockdown.sql) + [02](../db/migrations/20261019000002_rls_rewrite.sql) |
 |---|---|---|
 | Member profiles (PII) | Anyone, including anonymous visitors | Own row. Staff (admin, elder, leader, finance) see the directory |
 | Profile role / admin flag | The user edits it themselves | Admin only (trigger, error 42501) |
@@ -218,7 +218,7 @@ Every handler repeats the same 5–10 lines of create-client / `getUser` / 401. 
 
 | Concern | State | Finding |
 |---|---|---|
-| Audit trail | Browser-side `logAudit()` fire-and-forget on 5 pages. **0 entries** were recorded during a full test session. Forgeable | F-09 → DB triggers ([03](remediation/sql/03_audit_log.sql)) |
+| Audit trail | Browser-side `logAudit()` fire-and-forget on 5 pages. **0 entries** were recorded during a full test session. Forgeable | F-09 → DB triggers ([03](../db/migrations/20261019000003_audit_triggers.sql)) |
 | Errors and logging | Raw DB messages reach users ("Could not find the 'ministry' column…"). Console logging of emails and key prefixes | F-13 (logging removed in this change) |
 | Secrets | No real key, JWT secret or DB password in git history ✔. The **public** repo contains demo passwords and the project ref | F-10 (removed from tracked files in this change; rotate/delete the accounts) |
 | Security headers / rate limiting | None (`next.config.ts` has no `headers()`) | F-38 |
@@ -335,7 +335,7 @@ Severity: **C** = Critical, **H** = High, **M** = Medium, **L** = Low. Status as
 ## Appendix: how this was verified
 
 - **Static:** `tsc --noEmit` (1 error), `eslint` (0 errors, 114 warnings), `npm audit --omit=dev` (1 critical, 7 high, 1 moderate), `next build` (fails).
-- **Migrations:** every `scripts/*.sql` replayed in order on fresh Postgres 17 with a Supabase-compatible `auth` shim, each in a single transaction as the SQL editor runs them.
+- **Migrations:** every legacy script (now `scripts/legacy/*.sql`) replayed in order on fresh Postgres 17 with a Supabase-compatible `auth` shim, each in a single transaction as the SQL editor runs them.
 - **Running app:** a local GoTrue + PostgREST + Postgres stack built from the repo's scripts, with the dev server pointed at it. Chrome (Playwright) crawled all 38 dashboard routes as an admin and as a member, ran 11 user flows, and checked 390 px, dark mode and Amharic.
 - **Live project:** anonymous REST `HEAD` requests returning row counts only (no data read) and the public auth settings endpoint. No authenticated or direct database access was used.
 - **Remediation SQL:** `01`–`05` applied twice each (idempotency) to a production-like database (migrations up to `010`) and to a full-repo database. `verify_security.sql` passes all checks on both, and reports 14 failures against the repo's current policies. Storage policies were tested with a storage-schema shim.

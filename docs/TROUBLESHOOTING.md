@@ -4,7 +4,7 @@
 
 The app can't reach the Supabase project in `.env.local`.
 
-1. Supabase Dashboard: if the project is **paused** (free tier pauses inactive projects), click **Restore project**. If it was **deleted**, create a new one and rebuild the database ([SETUP.md §3](SETUP.md#3-build-the-database-new-project)).
+1. Supabase Dashboard: if the project is **paused** (free tier pauses inactive projects), click **Restore project**. If it was **deleted**, create a new one and rebuild the database ([SETUP.md §3](SETUP.md#3-build-the-database)).
 2. `NEXT_PUBLIC_SUPABASE_URL` must be exactly the **Project URL** from Project Settings → API, with the same hostname as in the error, no quotes and no trailing slash. `NEXT_PUBLIC_SUPABASE_ANON_KEY` must come from the same project.
 3. Check that the URL opens in a browser (network/DNS).
 4. Restart `npm run dev` after editing `.env.local`.
@@ -41,11 +41,11 @@ Only admins can insert profiles directly. Normal users get their profile from th
 
 ## "infinite recursion detected in policy for relation profiles" (42P17)
 
-Caused by `scripts/001` policies that query `profiles` from a `profiles` policy. Remediation `01_emergency_lockdown.sql` replaces them with the recursion-safe `has_role()` helper. Don't "fix" it by switching policies to `USING (true)`.
+Caused by `scripts/001` policies that query `profiles` from a `profiles` policy. The emergency lockdown (migration `20261019000001`) replaces them with the recursion-safe `has_role()` helper. Don't "fix" it by switching policies to `USING (true)`.
 
 ## `PGRST205` "Could not find the table … in the schema cache" / `PGRST204` "Could not find the '…' column"
 
-The code expects a table or column that the database doesn't have. Either a migration wasn't applied (run [`inspect_schema.sql`](remediation/sql/inspect_schema.sql) to see which), or the code uses a name that exists nowhere:
+The code expects a table or column that the database doesn't have. Either a migration wasn't applied (run [`inspect_schema.sql`](../db/scripts/inspect_schema.sql) to see which), or the code uses a name that exists nowhere:
 
 | Code uses | Fix |
 |---|---|
@@ -58,7 +58,7 @@ After applying a migration in the SQL editor, PostgREST reloads automatically wi
 
 ## Member registration fails: `null value in column "id" of relation "profiles"`
 
-`profiles.id` has no default. Apply `docs/remediation/sql/05_app_alignment.sql` (interim fix; the long-term design is [Remediation 3.1](REMEDIATION_GUIDE.md#31-separate-people-from-accounts)).
+`profiles.id` has no default. Apply `db/migrations/20261019000005_app_alignment.sql` (interim fix; the long-term design is [Remediation 3.1](REMEDIATION_GUIDE.md#31-separate-people-from-accounts)).
 
 ## Document upload or download fails
 

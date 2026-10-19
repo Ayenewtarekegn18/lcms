@@ -1,5 +1,7 @@
 -- =============================================================================
--- 01_emergency_lockdown.sql                       Remediation Guide: Phase 0, Step 0.3
+-- emergency_lockdown.sql                          Remediation Guide: Phase 0, Step 0.3
+-- Same SQL as migration db/migrations/20261019000001_emergency_lockdown.sql (checked in CI),
+-- for pasting into the Supabase SQL editor before dbmate is adopted (step 1.1).
 -- -----------------------------------------------------------------------------
 -- Closes the actively exploitable holes in the live database:
 --   F-01  anonymous visitors can read/write tables with the public anon key

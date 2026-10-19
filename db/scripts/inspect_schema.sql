@@ -4,7 +4,8 @@
 -- READ-ONLY. Shows what is really deployed, because scripts/*.sql and the live
 -- project have drifted (on 2026-10-17 the live REST API was missing every table
 -- from 011, 012, 014 and 015). Run each query in the Supabase SQL editor and
--- keep the output with your notes before running anything in docs/remediation.
+-- keep the output with your notes before running db/scripts/emergency_lockdown.sql
+-- or db/scripts/adopt_existing_database.sql.
 -- =============================================================================
 
 -- 1. Which migration "marker" objects exist?

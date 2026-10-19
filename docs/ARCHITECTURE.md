@@ -36,9 +36,11 @@ flowchart LR
 | `lib/supabase/client.ts` | Browser client; used by client pages that query directly |
 | `lib/supabase/proxy.ts` | Session-refresh helper. **Not wired up yet** (needs a root `proxy.ts`; Remediation 1.7) |
 | `lib/audit.ts` | Browser-side audit logging (to be replaced by DB triggers; Remediation 1.5) |
-| `scripts/*.sql` | Hand-run SQL migrations (see [SETUP.md §3](SETUP.md#3-build-the-database-new-project) for the working order) |
+| `db/migrations/` | dbmate migrations (up + down); `npm run db:up` / `db:down` / `db:status` ([SETUP.md §3](SETUP.md#3-build-the-database)) |
+| `db/scripts/`, `db/tests/` | One-off SQL (inspect, emergency lockdown, adoption) and database tests (security checks, round trip) |
+| `scripts/legacy/` | The original hand-run SQL scripts, kept for history only |
 | `scripts/setup-demo-accounts.js` | Dev/demo account seeding ([DEMO_SETUP.md](DEMO_SETUP.md)) |
-| `docs/remediation/sql/` | Tested security and integrity fixes |
+| `db/` | Tested security and integrity fixes |
 
 ## How a request flows
 
@@ -74,7 +76,7 @@ Private bucket **`documents`**. `POST /api/documents` uploads to `<user-id>/<tim
 
 ## Audit logging
 
-Today `lib/audit.ts` posts to `/api/audit-log` from the browser after some mutations. After remediation `03_audit_log.sql`, database triggers write `audit_log` for every change to sensitive tables, and the browser path is removed.
+Today `lib/audit.ts` posts to `/api/audit-log` from the browser after some mutations. After migration `20261019000003_audit_triggers`, database triggers write `audit_log` for every change to sensitive tables, and the browser path is removed.
 
 ## Internationalisation
 

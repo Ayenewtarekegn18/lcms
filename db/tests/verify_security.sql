@@ -1,13 +1,13 @@
 -- =============================================================================
--- verify_security.sql                       Remediation Guide: Steps 0.4, 1.3, 1.5
+-- db/tests/verify_security.sql              Remediation Guide: Steps 0.4, 1.3, 1.5
 -- -----------------------------------------------------------------------------
 -- Proves the lockdown works by acting as an anonymous visitor, a plain member,
 -- a finance user and an admin, and checking what each one can do.
--- Run AFTER 01 (and again after 02 and 03). Run as `postgres`:
+-- Run after the emergency lockdown / `npm run db:up` (CI runs it after every migrate). Run as `postgres`:
 --   * Supabase SQL editor: paste and run. "Success" means every check passed;
 --     a failure aborts with an error that lists the failed checks (and nothing
 --     is left behind, because the whole script rolls back).
---   * psql:  psql "$DB_URL" -1 -v ON_ERROR_STOP=1 -f verify_security.sql
+--   * psql:  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/tests/verify_security.sql
 -- Test users use fixed ids (…-00000000c0de) and are deleted at the end.
 -- =============================================================================
 

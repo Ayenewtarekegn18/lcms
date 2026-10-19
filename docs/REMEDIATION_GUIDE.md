@@ -21,13 +21,17 @@ Files used by this guide:
 
 | File | Purpose |
 |---|---|
-| [`remediation/sql/inspect_schema.sql`](remediation/sql/inspect_schema.sql) | Read-only: what is really deployed |
-| [`remediation/sql/01_emergency_lockdown.sql`](remediation/sql/01_emergency_lockdown.sql) | Block anon access, fix sign-up and self-promotion, one role model, lock profiles and finances |
-| [`remediation/sql/02_rls_rewrite.sql`](remediation/sql/02_rls_rewrite.sql) | Replace every RLS policy using the role matrix; storage policies |
-| [`remediation/sql/03_audit_log.sql`](remediation/sql/03_audit_log.sql) | Trigger-based, tamper-proof audit log |
-| [`remediation/sql/04_schema_hardening.sql`](remediation/sql/04_schema_hardening.sql) | `updated_at`, actor defaults, ETB, constraints, foreign-key indexes |
-| [`remediation/sql/05_app_alignment.sql`](remediation/sql/05_app_alignment.sql) | Schema changes the Phase 2 code fixes need |
-| [`remediation/sql/verify_security.sql`](remediation/sql/verify_security.sql) | Executable access checks; fails loudly, cleans up after itself |
+| [`db/migrations/`](../db/migrations/) | The schema as **dbmate** migrations, each with `-- migrate:up` and `-- migrate:down`. `npm run db:up` / `db:down` / `db:status` |
+| [`db/scripts/inspect_schema.sql`](../db/scripts/inspect_schema.sql) | Read-only: what is really deployed |
+| [`db/scripts/emergency_lockdown.sql`](../db/scripts/emergency_lockdown.sql) | Phase 0 paste-in version of migration `20261019000001` (anon lockdown, sign-up fix, role model, profile/finance policies) |
+| [`db/scripts/adopt_existing_database.sql`](../db/scripts/adopt_existing_database.sql) | One-time: tells dbmate which migrations a hand-built database already has |
+| [`20261019000002_rls_rewrite`](../db/migrations/20261019000002_rls_rewrite.sql) | Every RLS policy rebuilt from the role matrix; storage policies |
+| [`20261019000003_audit_triggers`](../db/migrations/20261019000003_audit_triggers.sql) | Trigger-based, tamper-proof audit log |
+| [`20261019000004_schema_hardening`](../db/migrations/20261019000004_schema_hardening.sql) | `updated_at`, actor defaults, ETB, constraints, foreign-key indexes |
+| [`20261019000005_app_alignment`](../db/migrations/20261019000005_app_alignment.sql) | Schema changes the Phase 2 code fixes need |
+| [`db/tests/verify_security.sql`](../db/tests/verify_security.sql) | Executable access checks; fails loudly, cleans up after itself |
+| [`db/tests/roundtrip.sh`](../db/tests/roundtrip.sh) | Proves every migration's down exactly reverses its up (`npm run db:test`, runs in CI) |
+
 
 ---
 
@@ -39,7 +43,7 @@ Files used by this guide:
 Anyone can sign up today. The public GitHub repo has published demo logins, including a confirmed **admin**, so treat those passwords as burned.
 
 1. Supabase Dashboard → **Authentication → Sign In / Providers** → turn **off** "Allow new users to sign up". Members get invited by an admin instead (Auth → Users → Invite).
-2. Supabase Dashboard → **Authentication → Users**: search `@church.local`. In the production project, **delete** these demo users, or at least reset their passwords. Their passwords were public in `scripts/setup-demo-accounts.js`, `scripts/005_demo_accounts.sql` and `docs/DEMO_SETUP.md` until this change, and they remain in git history.
+2. Supabase Dashboard → **Authentication → Users**: search `@church.local`. In the production project, **delete** these demo users, or at least reset their passwords. Their passwords were public in `scripts/setup-demo-accounts.js`, `scripts/legacy/005_demo_accounts.sql` and `docs/DEMO_SETUP.md` until this change, and they remain in git history.
 3. The real anon key, service-role key, JWT secret and database password were **never** committed, so you don't need to rotate them. The project ref was committed (`docs/TROUBLESHOOTING.md`); it's public anyway because it's in every browser bundle, so no action is needed.
 4. Authentication → URL Configuration: set **Site URL** to the real app URL (and `http://localhost:3000` under Redirect URLs for development).
 
@@ -53,14 +57,14 @@ Anyone can sign up today. The public GitHub repo has published demo logins, incl
    # Session-pooler connection string from Dashboard → Connect
    pg_dump "$DB_URL" --no-owner --format=custom --file=lkhc-$(date +%F).dump
    ```
-2. Run [`inspect_schema.sql`](remediation/sql/inspect_schema.sql) (read-only) in the SQL editor and save the output. It shows which migrations are applied, every policy, which tables `anon` can read, every admin account, and the demo accounts.
+2. Run [`inspect_schema.sql`](../db/scripts/inspect_schema.sql) (read-only) in the SQL editor and save the output. It shows which migrations are applied, every policy, which tables `anon` can read, every admin account, and the demo accounts.
 
 **Done when:** a dated backup file exists, and the inspect output is saved with your notes.
 
 ### 0.3 Lock the database now
 **Fixes:** F-01, F-02, F-03, F-04 · **Effort:** 15 min · ✔ **verified**
 
-Run [`01_emergency_lockdown.sql`](remediation/sql/01_emergency_lockdown.sql) in the SQL editor. It is idempotent and works on the live project's current state. It:
+Paste [`db/scripts/emergency_lockdown.sql`](../db/scripts/emergency_lockdown.sql) into the SQL editor and run it. It is the same SQL as migration `20261019000001` (CI checks they match), so dbmate re-applying it later in step 1.1 is harmless. It is idempotent and works on the live project's current state. It:
 - revokes all table access from `anon`; the app never reads tables before login;
 - makes `profiles.role` the single role column (with a CHECK), keeping `is_admin` in sync for old code;
 - adds `current_app_role()` / `has_role(...)`: `SECURITY DEFINER` helpers that avoid the 42P17 recursion that led to the `USING (true)` policies;
@@ -78,7 +82,7 @@ UPDATE public.profiles SET role = 'member' WHERE email = 'unknown@example.com';
 ### 0.4 Prove it
 **Fixes:** verifies F-01..F-04 · **Effort:** 10 min · ✔ **verified**
 
-1. Run [`verify_security.sql`](remediation/sql/verify_security.sql). "Success" means every check passed. Otherwise it raises an error listing each failed check and leaves nothing behind. (Against the repo's current policies it reports 14 failures.)
+1. Run [`verify_security.sql`](../db/tests/verify_security.sql). "Success" means every check passed. Otherwise it raises an error listing each failed check and leaves nothing behind. (Against the repo's current policies it reports 14 failures.)
 2. From any machine, confirm anonymous access is gone:
    ```bash
    curl -s "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
@@ -119,28 +123,36 @@ The production project was paused or deleted on 2026-10-16 and nobody noticed.
 ## Phase 1 — Secure foundation
 
 ### 1.1 Make the schema reproducible
-**Fixes:** F-17, F-37, F-29 · **Effort:** 2–3 days
+**Fixes:** F-17, F-37, F-29 · **Effort:** 2–3 days · ✔ **verified** (migrations, adoption and round trip)
 
-Today the database can't be rebuilt from the repo, and production differs from it.
+The schema now lives in [`db/migrations/`](../db/migrations/) as **dbmate** migrations. dbmate is to this Node/SQL project what Alembic is to Python: every migration file has a `-- migrate:up` and a `-- migrate:down` section, and dbmate records what's applied in `dbmate.schema_migrations` (outside `public`, so the Supabase API never exposes it).
 
-1. **Supabase CLI baseline from production** (production is the truth, after Phase 0):
+| Command | Alembic equivalent | Does |
+|---|---|---|
+| `npm run db:up` | `alembic upgrade head` | apply every pending migration |
+| `npm run db:down` | `alembic downgrade -1` | roll back the most recent migration |
+| `npm run db:status` | `alembic current` / `history` | list applied and pending migrations |
+| `npm run db:new <name>` | `alembic revision -m` | create `db/migrations/<timestamp>_<name>.sql` |
+| `npm run db:test` | — | prove every down reverses its up (CI) |
+
+The commands migrate whatever `DATABASE_URL` points to (`.env.local` or the environment), so keep it on local or staging; production is migrated by the deploy pipeline.
+
+1. **Adopt dbmate on the existing database** (once, after Phase 0). Run [`db/scripts/adopt_existing_database.sql`](../db/scripts/adopt_existing_database.sql) in the SQL editor: it marks the legacy migrations the database already has. Then, with `DATABASE_URL` pointing at production for this one-time step:
    ```bash
-   npm i -D supabase
-   npx supabase init
-   npx supabase link --project-ref <project-ref>
-   npx supabase db pull            # writes supabase/migrations/<ts>_remote_schema.sql
+   DATABASE_URL='postgresql://postgres.<ref>:<db-password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require' npm run db:status
+   DATABASE_URL='…same…' npm run db:up      # applies 011–016 (if missing) and every remediation migration
    ```
-2. **Archive** the old scripts. Don't delete history; stop running it:
-   `mkdir scripts/legacy && git mv scripts/*.sql scripts/legacy/`, and add a `scripts/legacy/README.md` saying "historical, do not run".
-3. From now on, every change is a migration: `npx supabase migration new <name>`. Copy `docs/remediation/sql/02…05` in as migrations as you adopt them (their `BEGIN/COMMIT` lines can stay).
-4. **Seed only outside production:** move demo data to `supabase/seed.sql` (it runs on `supabase db reset` locally and never on production).
-5. **Three environments:** local (`npx supabase start`), a **staging** Supabase project, and production. Point Vercel *Preview* at staging and *Production* at production.
-6. **Generated types.** These would have caught every wrong-column bug in this review at compile time:
+   Then run [`db/tests/verify_security.sql`](../db/tests/verify_security.sql). Tested from a live-like state (legacy scripts up to 010) and from a full-legacy state: both end with all security checks passing.
+2. **Security rollbacks are locked.** The down sections of `20261019000001_emergency_lockdown` and `20261019000002_rls_rewrite` would re-open anonymous access and self-promotion, so they refuse to run unless the database has `lkhc.allow_insecure_downgrade = on` (`ALTER DATABASE … SET …`). Use that only on dev/test databases, then `RESET` it.
+3. **Every change is a migration from now on:** `npm run db:new add_xyz`, write both sections, run `npm run db:up`, `npm run db:down`, `npm run db:up` locally, and let CI's round-trip test confirm the down is exact.
+4. The old scripts are archived in [`scripts/legacy/`](../scripts/legacy/) (history only; demo data is not a migration).
+5. **Three environments:** local (`npx supabase start`, `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres`), a **staging** Supabase project, and production. Point Vercel *Preview* at staging and *Production* at production.
+6. **Generated types.** These would have caught every wrong-column bug in the review at compile time:
    ```bash
-   npx supabase gen types typescript --linked > lib/supabase/database.types.ts
+   npx supabase gen types typescript --db-url "$DATABASE_URL" > lib/supabase/database.types.ts
    ```
    Then type the clients: `createServerClient<Database>(…)` / `createBrowserClient<Database>(…)`.
-7. Allow local Supabase URLs in the browser client (it currently rejects anything that isn't `https://*.supabase.co`). ✔ **verified:**
+7. Allow local Supabase URLs in the browser client (it rejected anything that isn't `https://*.supabase.co`). ✔ **done** in branch `feat/db-migrations-and-docs`:
    ```diff
    --- lib/supabase/client.ts
    -  if (!supabaseUrl.startsWith('https://') || !supabaseUrl.includes('.supabase.co')) {
@@ -154,7 +166,7 @@ Today the database can't be rebuilt from the repo, and production differs from i
    +  }
    ```
 
-**Done when:** `npx supabase db reset` builds a working local database from `supabase/migrations` plus `seed.sql`, and `npm run dev` works against it.
+**Done when:** production is adopted (`npm run db:status` shows nothing pending), and `npm run db:up` builds a working local database from zero.
 
 ### 1.2 Use one role model in the app
 **Fixes:** F-08 · **Effort:** 1 day · ✔ **verified**
@@ -233,7 +245,7 @@ Today the database can't be rebuilt from the repo, and production differs from i
    import { requirePageRole } from '@/lib/auth/guards'
 
    // Server-side gate: members who type /dashboard/financial are redirected.
-   // RLS (docs/remediation/sql/02_rls_rewrite.sql) still protects the data itself.
+   // RLS (db/migrations/20261019000002_rls_rewrite.sql) still protects the data itself.
    export default async function FinancialLayout({ children }: { children: React.ReactNode }) {
      await requirePageRole('admin', 'elder', 'finance')
      return <>{children}</>
@@ -247,7 +259,7 @@ Today the database can't be rebuilt from the repo, and production differs from i
 ### 1.3 Rewrite all row-level security
 **Fixes:** F-05, F-06, F-07 · **Effort:** 1–2 days (including app fallout) · ✔ **verified**
 
-1. Apply [`02_rls_rewrite.sql`](remediation/sql/02_rls_rewrite.sql) (on staging first). It drops **every** public policy and recreates them in groups:
+1. Migration [`20261019000002_rls_rewrite`](../db/migrations/20261019000002_rls_rewrite.sql), applied by `npm run db:up` (staging first), drops **every** public policy and recreates them in groups:
 
    | Group | Read | Write |
    |---|---|---|
@@ -325,7 +337,7 @@ Checklist for every route:
 ### 1.5 Move the audit trail into the database
 **Fixes:** F-09 · **Effort:** 0.5–1 day · ✔ **verified**
 
-1. Apply [`03_audit_log.sql`](remediation/sql/03_audit_log.sql). Triggers on money, people, permissions and pastoral tables record the real caller. Confidential tables log only *which fields* changed. App users can no longer insert audit rows.
+1. Migration [`20261019000003_audit_triggers`](../db/migrations/20261019000003_audit_triggers.sql) (applied by `npm run db:up`): triggers on money, people, permissions and pastoral tables record the real caller. Confidential tables log only *which fields* changed. App users can no longer insert audit rows.
 2. Delete `lib/audit.ts` and every `logAudit(...)` call (calendar, attendance, financial, members, ministries), and delete the `POST` handler in `app/api/audit-log/route.ts`.
 3. In the audit `GET`, replace the `is_admin` check with `requireRole('admin', 'elder')`, and replace the "table missing → `[]`" branch with `dbError`. A missing table must be loud.
 
@@ -334,7 +346,7 @@ Checklist for every route:
 ### 1.6 Harden the schema
 **Fixes:** F-14, F-15, F-16 · **Effort:** 0.5–1 day · ✔ **verified**
 
-Apply [`04_schema_hardening.sql`](remediation/sql/04_schema_hardening.sql). It adds `updated_at` triggers (on about 25 tables), defaults actor columns (`recorded_by_id`, `organizer_id`, …) to `auth.uid()`, sets currency to ETB, and adds `amount > 0` and `end_date >= start_date` (as `NOT VALID`) plus missing foreign-key indexes. Fix the rows its final query lists, then run the two `VALIDATE CONSTRAINT` lines.
+Migration [`20261019000004_schema_hardening`](../db/migrations/20261019000004_schema_hardening.sql) (applied by `npm run db:up`) adds `updated_at` triggers (on about 25 tables), defaults actor columns (`recorded_by_id`, `organizer_id`, …) to `auth.uid()`, sets currency to ETB, and adds `amount > 0` and `end_date >= start_date` (as `NOT VALID`) plus missing foreign-key indexes. Fix the rows its final query lists, then run the two `VALIDATE CONSTRAINT` lines.
 
 ### 1.7 Refresh sessions with `proxy.ts`
 **Fixes:** F-11 · **Effort:** 1–2 hours · ✔ **verified** (build shows `ƒ Proxy (Middleware)`; signed-out `/dashboard/*` redirects to `/auth/login`)
@@ -402,7 +414,7 @@ Then: Supabase Auth → **Rate Limits** (keep the defaults on), enable CAPTCHA o
 ### 2.2 Financial ledger
 **Fixes:** F-18 · **Effort:** 1–1.5 days · ✔ **verified**
 
-1. Apply [`05_app_alignment.sql`](remediation/sql/05_app_alignment.sql). It normalises `transaction_type` to `income`/`expense`, moves the old label (Tithe, Offering…) into `category`, makes amounts positive, and adds a CHECK.
+1. Migration [`20261019000005_app_alignment`](../db/migrations/20261019000005_app_alignment.sql) (applied by `npm run db:up`) normalises `transaction_type` to `income`/`expense`, moves the old label (Tithe, Offering…) into `category`, makes amounts positive, and adds a CHECK.
 2. Read and write the real columns:
    ```diff
    --- app/dashboard/financial/page.tsx
@@ -422,7 +434,7 @@ Then: Supabase Auth → **Rate Limits** (keep the defaults on), enable CAPTCHA o
               amount: parseFloat(formData.amount.toString()),
    +          description: formData.description || null,
    +          transaction_date: formData.transaction_date,
-   +          // recorded_by_id defaults to auth.uid() (docs/remediation/sql/04_schema_hardening.sql)
+   +          // recorded_by_id defaults to auth.uid() (db/migrations/20261019000004_schema_hardening.sql)
             }])
    ```
 3. Compute totals in the database, not from the latest 50 rows in the browser. ✎ **sketch:**
@@ -437,7 +449,7 @@ Then: Supabase Auth → **Rate Limits** (keep the defaults on), enable CAPTCHA o
 ### 2.3 Calendar and events
 **Fixes:** F-19 · **Effort:** 0.5–1 day · ✔ **verified** (payload)
 
-`05_app_alignment.sql` adds `events.ministry_id`. Send the NOT NULL `start_date` and the foreign key instead of the nonexistent `ministry` text column:
+Migration `20261019000005_app_alignment` adds `events.ministry_id`. Send the NOT NULL `start_date` and the foreign key instead of the nonexistent `ministry` text column:
 ```diff
 --- app/dashboard/calendar/page.tsx
          event_type: 'event',
@@ -453,7 +465,7 @@ Change the form's ministry `<select>` to list `ministries` (`id` as the value, `
 ### 2.4 Member registration
 **Fixes:** F-20 (interim), F-27 · **Effort:** 3–4 days
 
-1. `05_app_alignment.sql` gives `profiles.id` a default, so registration without a login account stops failing. This is a stopgap until Step 3.1.
+1. Migration `20261019000005_app_alignment` gives `profiles.id` a default, so registration without a login account stops failing. This is a stopgap until Step 3.1.
 2. Save the whole form. Define one zod schema mirroring [MEMBER_REGISTRATION_FORM_STRUCTURE.md](MEMBER_REGISTRATION_FORM_STRUCTURE.md); validate it in `POST /api/members`; store core fields in columns and the rest in a `details jsonb` column until the model is normalised (3.1).
 3. Upload the photo and ID image to a private `member-files` bucket (policy: staff only) and store the paths.
 4. Children: save them (create linked member records), or remove the "Child added" control. Never show success for unsaved data.
@@ -462,7 +474,7 @@ Change the form's ministry `<select>` to list `ministries` (`id` as the value, `
 ### 2.5 Attendance and reports
 **Fixes:** F-21, F-28, F-30 · **Effort:** 1.5–2 days · ✔ **verified** (reports query fix)
 
-1. Use the table that exists. `05_app_alignment.sql` adds `attendance_records.event_id`:
+1. Use the table that exists. Migration `20261019000005_app_alignment` adds `attendance_records.event_id`:
    ```diff
    --- app/dashboard/reports/page.tsx
    -        supabase.from('financial_transactions').select('type, amount'),
@@ -649,7 +661,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         with: { version: latest }
       - run: supabase db start          # applies supabase/migrations from zero
-      - run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f docs/remediation/sql/verify_security.sql
+      - run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f db/tests/verify_security.sql
 ```
 Then add:
 - **RLS tests** with pgTAP (`supabase test db`), one file per role group in 02.

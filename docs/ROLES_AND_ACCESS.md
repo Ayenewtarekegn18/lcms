@@ -12,7 +12,7 @@
 | `finance` | Treasurer / finance team. Ledger and financial reports |
 | `member` | Everyone else with a login. Own profile, calendar, own giving |
 
-`profiles.is_admin` is a legacy flag. After `docs/remediation/sql/01_emergency_lockdown.sql` it's derived automatically (`is_admin = role = 'admin'`); don't set it by hand.
+`profiles.is_admin` is a legacy flag. After `db/scripts/emergency_lockdown.sql` it's derived automatically (`is_admin = role = 'admin'`); don't set it by hand.
 
 ## Page access (intended)
 
@@ -45,7 +45,7 @@ Deactivated users (`is_active = false`) lose all role-based access.
 
 | Layer | Mechanism | State |
 |---|---|---|
-| Database (authoritative) | RLS policies using `public.has_role(...)` | Written and tested: [`01`](remediation/sql/01_emergency_lockdown.sql), [`02`](remediation/sql/02_rls_rewrite.sql). **Must be applied to each project** |
+| Database (authoritative) | RLS policies using `public.has_role(...)` | Written and tested: [`01`](../db/scripts/emergency_lockdown.sql), [`02`](../db/migrations/20261019000002_rls_rewrite.sql). **Must be applied to each project** |
 | Pages | Server layouts calling `requirePageRole(...)` | Remediation Step 1.2 |
 | API routes | `requireRole(...)` + zod | Remediation Step 1.4 |
 | Sidebar | Hides links by role (`components/sidebar.tsx`) | Convenience only; it doesn't protect anything |
