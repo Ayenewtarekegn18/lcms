@@ -8,7 +8,7 @@ How to run LKHC locally and how to build a new Supabase project for it. This rep
 
 | Tool | Version | Why |
 |---|---|---|
-| Node.js | **≥ 22.9** (22 LTS or 24) | Next.js 16, and `node --env-file-if-exists` used by the `db:*` scripts |
+| Node.js | **≥ 22.18** (22 LTS or 24) | Next.js 16; `node --env-file-if-exists` (db scripts) and built-in TypeScript loading (member import) |
 | npm | 10+ | Lockfile is `package-lock.json` |
 | A Supabase project | free tier is fine for development | Postgres, Auth, Storage |
 
