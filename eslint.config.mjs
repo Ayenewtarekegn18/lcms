@@ -43,4 +43,11 @@ export default [
       "no-console": "off"
     },
   },
+  {
+    // Node scripts (database tooling): Node globals instead of browser ones
+    files: ["db/**/*.mjs"],
+    languageOptions: {
+      globals: { console: "readonly", process: "readonly", URL: "readonly" },
+    },
+  },
 ];
