@@ -31,6 +31,9 @@ BEGIN
     v := 'denied:' || SQLSTATE;  -- 42501 = permission denied / RLS violation
   END;
   RESET ROLE;
+  -- don't leave the test user's identity on the transaction (it would be blamed for later statements)
+  PERFORM set_config('request.jwt.claims', '', true);
+  PERFORM set_config('request.jwt.claim.sub', '', true);
   RETURN v;
 END
 $$;
@@ -45,6 +48,10 @@ DECLARE
   failures text := '';
   passed int := 0;
   got text;
+  test_ids text[];
+  seq_last bigint;
+  seq_called boolean;
+  test_number bigint;
 BEGIN
   IF to_regprocedure('public.has_role(text[])') IS NULL THEN
     RAISE EXCEPTION 'verify_security: run 01_emergency_lockdown.sql first (public.has_role() is missing)';
@@ -55,7 +62,8 @@ BEGIN
   IF to_regclass('public.documents') IS NOT NULL THEN
     DELETE FROM public.documents WHERE name LIKE 'verify_security %';
   END IF;
-  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
+  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id)
+     OR (first_name = 'verify_security' AND last_name = 'registrant');
   DELETE FROM auth.users WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
 
   -- Test users (the sign-up trigger creates their profiles)
@@ -142,17 +150,40 @@ BEGIN
     IF got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  leader cannot create Leadership Only documents (got ' || got || ')'; END IF;
   END IF;
 
+  IF to_regprocedure('public.register_member(jsonb)') IS NOT NULL THEN
+    SELECT last_value, is_called INTO seq_last, seq_called FROM public.member_number_seq;
+    got := pg_temp.try_as(member_id, $q$SELECT public.register_member('{"firstNameAm":"x","fatherNameAm":"y","sex":"male","phone":"0911000000"}'::jsonb) ->> 'member_number'$q$);
+    IF got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  member cannot register members (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(admin_id, $q$SELECT public.register_member('{"firstNameAm":"verify_security","fatherNameAm":"registrant","sex":"female","phone":"0911000001","memberNumber":"FORGED-1"}'::jsonb) ->> 'member_number'$q$);
+    test_number := nullif(substring(got FROM '([0-9]+)$'), '')::bigint;
+    IF got ~ '^[A-Z0-9]+-[0-9]{4,}$' THEN passed := passed + 1; ELSE failures := failures || E'\n  admin registers with a sequential number, client-chosen numbers ignored (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(member_id, $q$SELECT count(*) FROM public.member_details d JOIN public.profiles p ON p.id = d.member_id WHERE p.first_name = 'verify_security'$q$);
+    IF got = '0' THEN passed := passed + 1; ELSE failures := failures || E'\n  member cannot read other members'' registry records (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(leader_id, $q$SELECT count(*) FROM public.member_details d JOIN public.profiles p ON p.id = d.member_id WHERE p.first_name = 'verify_security'$q$);
+    IF got = '1' THEN passed := passed + 1; ELSE failures := failures || E'\n  leader can read the registry (got ' || got || ')'; END IF;
+  END IF;
+
   -- clean up
   DELETE FROM public.financial_transactions WHERE description = 'verify_security test row';
   IF to_regclass('public.documents') IS NOT NULL THEN
     DELETE FROM public.documents WHERE name LIKE 'verify_security %';
   END IF;
-  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
+  -- every id this run created (incl. the registrant), so their audit rows can be removed afterwards
+  test_ids := ARRAY[member_id::text, finance_id::text, admin_id::text, signup_id::text, leader_id::text]
+              || ARRAY(SELECT id::text FROM public.profiles WHERE first_name = 'verify_security' AND last_name = 'registrant');
+  DELETE FROM public.profiles WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id)
+     OR (first_name = 'verify_security' AND last_name = 'registrant');
   DELETE FROM auth.users WHERE id IN (member_id, finance_id, admin_id, signup_id, leader_id);
   IF to_regclass('public.audit_log') IS NOT NULL THEN
+    DELETE FROM public.audit_log WHERE resource_id = ANY (test_ids);
     DELETE FROM public.audit_log WHERE user_id IN (member_id, finance_id, admin_id, signup_id, leader_id)
        OR resource_id IN (member_id::text, finance_id::text, admin_id::text, signup_id::text, leader_id::text)
        OR details::text LIKE '%verify_security%';
+  END IF;
+
+  -- give back the member number the test registration used, unless a real registration came after it
+  IF test_number IS NOT NULL AND (SELECT last_value FROM public.member_number_seq) = test_number THEN
+    PERFORM setval('public.member_number_seq', seq_last, seq_called);
   END IF;
 
   IF failures <> '' THEN
