@@ -60,7 +60,7 @@ BEGIN
     (SELECT u.email FROM auth.users u WHERE u.id = actor),
     lower(TG_OP),
     TG_TABLE_NAME,
-    COALESCE(new_row, old_row) ->> 'id',
+    COALESCE(COALESCE(new_row, old_row) ->> 'id', COALESCE(new_row, old_row) ->> 'member_id'),  -- member_details is keyed by member_id
     CASE
       WHEN redact AND TG_OP = 'UPDATE' THEN
         jsonb_build_object('changed_fields', (SELECT jsonb_agg(k) FROM jsonb_object_keys(changed) AS k))
