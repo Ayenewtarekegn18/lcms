@@ -3,8 +3,8 @@
 // member's existing number (LKH-0001…) so printed ID cards stay valid. Validation is the app's own
 // (lib/members/registration.ts), so imported rows obey the same rules as the registration form.
 //
-//   node --env-file=.env.local scripts/import-lebu-form.mjs --file members.json [--dry-run]
-//   node --env-file=.env.local scripts/import-lebu-form.mjs --endpoint [--photos] [--dry-run]
+//   npm run import:lebu-form -- --file members.json [--dry-run]
+//   npm run import:lebu-form -- --endpoint [--photos] [--dry-run]
 //
 //   --file      JSON saved from the Apps Script "list" action ({ members: [...] }) or a plain array
 //   --endpoint  fetch the list from LEBU_FORM_ENDPOINT using LEBU_FORM_PASSCODE (the office passcode)
