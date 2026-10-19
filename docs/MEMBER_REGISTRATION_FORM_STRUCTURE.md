@@ -1,529 +1,59 @@
-# 📋 Member Registration Form - Complete Structure
+# Member Registration
 
-> **Spec, not current behaviour (2026-10-17).** The form in `app/dashboard/members/register/page.tsx` collects these fields but saves only about 10 of them, drops the photo and ID uploads, and doesn't save children; submission currently fails. See [STATUS.md](STATUS.md) and [Remediation 2.4](REMEDIATION_GUIDE.md#24-member-registration). National-ID numbers, income and family data are sensitive; see Remediation 3.10.
+The registration form at `/dashboard/members/register` follows the **lebu-form register** (the Google-Sheet site the church already uses for member records and ID cards): the same fields, Amharic/English labels, options, rules and member numbering. That way staff see the form they know, and lebu-form records import 1:1 with their existing numbers.
 
-## Form Overview
-- **Total Steps**: 5
-- **Total Fields**: 50+
-- **File Uploads**: 2 (Photo, ID Document)
-- **Conditional Fields**: 8
-- **Required Fields**: 15
+The definition lives in one place, [`lib/members/registration.ts`](../lib/members/registration.ts). It holds the sections, fields, options and validation schema, and the form, the API and the importer all use it.
 
----
+## Sections and fields
 
-## 🎯 STEP 1: Personal Profile and Other
+`*` = required. "If …" fields appear only when the condition holds; hidden fields are cleared before saving.
 
-### Header
-- Title: "Personal profile and other"
-- Progress: Step 1 of 5
+| Section | Fields |
+|---|---|
+| **የግል መረጃ · Personal details** | ስም first name\*, የአባት ስም father's name\*, የአያት ስም grandfather's name, ጾታ sex\* (male/female), date of birth, marital status (single, married, widowed, divorced). *If married:* spouse's name (suggests existing members), spouse's age, spouse's phone. Number of children, and one row per child (name, sex, education, age; tally under 18 / 18 and over). Church members living with the family (name, relationship, age; up to 10). Blood group. |
+| **አድራሻና ስልክ · Address & contact** | Mobile phone\*, alternate phone, email, sub-city (the 11 Addis Ababa sub-cities or "Other"), woreda, house no., area or landmark |
+| **መንፈሳዊ መረጃ · Church & spiritual life** | Member since, baptized (yes/no). *If yes:* baptism date. Previous church, standing (member, deacon, elder, teacher, evangelist, pastor, board member), ministry departments (12, or "not currently serving", which excludes the others). *If not serving:* department they would like to join. Membership status (active/inactive, default active). |
+| **ትምህርትና ሥራ · Education & work** | Education level, occupation, workplace |
+| **የአደጋ ጊዜ ተጠሪ · Emergency contact** | Contact name, phone, relationship, notes |
 
-### Personal Profile Section
-**Photo Upload Area**
-- Profile picture placeholder (gray box)
-- "Upload photo" button
-- File input: Images only (*.jpg, *.png, etc.)
-- Preview shows selected image
+Side panel: **photo** (choose a file or use the camera; cropped to a 4:5 portrait, as on the ID card) and the **member number** the next registration will get.
 
-**Name Information** (3-column grid)
-- **Title** (Optional)
-  - Type: Text Input
-  - Placeholder: "Mr., Ms., Dr., etc."
-  - Max length: 50 chars
+**Validation** (messages as in lebu-form): required fields must be filled ("This one is required."); phone numbers need at least 7 digits; email must look valid; birth and baptism dates can't be in the future ("Member since" may be). Dates also show the Ethiopian-calendar equivalent, for example `መስከረም 1, 2019 ዓ.ም.`.
 
-- **First Name*** (Required)
-  - Type: Text Input
-  - Placeholder: "First name"
-  - Max length: 100 chars
+## Where the data goes
 
-- **Father Name*** (Required)
-  - Type: Text Input
-  - Placeholder: "Father's name"
-  - Max length: 100 chars
+| Data | Stored in |
+|---|---|
+| First name, father's name, sex, date of birth, phone, email | `profiles` (the identity the rest of the app uses) |
+| Everything else, member number, photo path | `member_details` (one row per person, staff-only) |
+| Member-number prefix (`LKH`), church name and address for cards | `church_settings` |
+| Photo | private storage bucket `member-photos`, `<member_id>.jpg` |
 
-- **Grandfather Name*** (Required)
-  - Type: Text Input
-  - Placeholder: "Grandfather's name"
-  - Max length: 100 chars
+`register_member()` (migration [`20261019000006_member_registry`](../db/migrations/20261019000006_member_registry.sql)) writes both rows in one transaction. Member numbers come from a database sequence (`LKH-0001`, `LKH-0002`, …), so two people registering at the same moment can never get the same number.
 
-**Gender & Nationality** (2-column)
-- **Gender*** (Required)
-  - Type: Radio Buttons (2 options)
-  - Options: "Male", "Female"
-  - Default: "Male"
+## Who can do what
 
-- **Nationality*** (Required)
-  - Type: Dropdown
-  - Options: "Ethiopian", "Other"
-  - Default: "Ethiopian"
+| Action | Roles |
+|---|---|
+| Register a member, upload a photo | admin (`REGISTRARS` in `lib/auth/roles.ts`; widen it together with the `member_details` / `profiles` insert policies) |
+| Read the registry | admin, elder, ministry_leader; members can read their own record |
+| Audit | every change is logged with the fields that changed, not their values |
 
-**Mother's Details** (3-column)
-- **Mother's First Name** (Optional)
-  - Type: Text Input
-  - Placeholder: "Mother's first name"
+## Importing from lebu-form
 
-- **Mother's Father Name** (Optional)
-  - Type: Text Input
-  - Placeholder: "Maternal grandfather name"
+[`scripts/import-lebu-form.mjs`](../scripts/import-lebu-form.mjs) copies the Google-Sheet register into Supabase, **keeping each member's number** so printed ID cards stay valid. It validates with the same schema as the form and is safe to re-run (it skips existing numbers).
 
-- **Mother's Grandmother Name** (Optional)
-  - Type: Text Input
-  - Placeholder: "Maternal grandmother name"
-
-**Birth Location** (4-column grid)
-- **Birth Country** (Optional)
-  - Type: Dropdown
-  - Options: "Ethiopia", "Other"
-  - Default: "Ethiopia"
-
-- **Birth Region** (Optional)
-  - Type: Text Input
-  - Placeholder: "Region"
-
-- **Birth Zone** (Optional)
-  - Type: Text Input
-  - Placeholder: "Zone"
-
-- **Birth City** (Optional - 2 columns)
-  - Type: Text Input
-  - Placeholder: "City"
-
-**Birth Date & ID**
-- **Date of Birth*** (Required)
-  - Type: Date Picker
-  - Format: YYYY-MM-DD
-  - Min: 1920, Max: Current date
-
-- **ID Type** (Optional)
-  - Type: Dropdown
-  - Options: "Select ID Type", "Passport", "National ID", "Driver License"
-
-- **ID Number** (Optional - 2 columns)
-  - Type: Text Input
-  - Placeholder: "ID number"
-
-**ID Document Upload**
-- **Upload your ID** (Optional)
-  - Type: File Upload with Preview
-  - Dashed border box with preview area
-  - "Upload ID" button
-  - Accepted: Images (*.jpg, *.png, *.gif)
-
-**Language**
-- **Language** (Optional - Full width)
-  - Type: Text Input
-  - Placeholder: "Language spoken"
-  - Example: "Amharic, English"
-
----
-
-## 🎓 STEP 2: Academic Status
-
-### Header
-- Title: "Academic Status"
-- Progress: Step 2 of 5
-
-**Academic Information** (Single column)
-- **Academic Status*** (Required)
-  - Type: Dropdown
-  - Options: 
-    - "Select Status"
-    - "Primary School"
-    - "Secondary School"
-    - "High School"
-    - "Diploma"
-    - "Bachelor's Degree"
-    - "Master's Degree"
-    - "PhD"
-
-- **Field of Study** (Optional)
-  - Type: Text Input
-  - Placeholder: "Your field of study"
-  - Example: "Engineering, Medicine, Business"
-
-**Employment Status** (Single column)
-- **Full Time Job Status*** (Required)
-  - Type: Dropdown
-  - Options:
-    - "Select Status"
-    - "Student"
-    - "Government"
-    - "Non Government"
-    - "Private Company"
-    - "Private Business"
-    - "Unemployed"
-    - "Housewife"
-    - "Retired"
-
-**Employment Details** (3-column grid)
-- **Profession** (Optional)
-  - Type: Text Input
-  - Placeholder: "Your profession"
-  - Example: "Engineer, Doctor, Teacher"
-
-- **Company** (Optional)
-  - Type: Text Input
-  - Placeholder: "Company name"
-
-- **Monthly Income Range** (Optional)
-  - Type: Dropdown
-  - Options:
-    - "Select Range"
-    - "0 - 500"
-    - "500 - 1000"
-    - "1000 - 5000"
-    - "5000+"
-
-**Part Time** (Single column)
-- **Part Time Job** (Optional)
-  - Type: Text Input
-  - Placeholder: "Part time job details"
-  - Example: "Teaching, Tutoring"
-
----
-
-## 💑 STEP 3: Marital Status and Children
-
-### Header
-- Title: "Marital Status and Children"
-- Progress: Step 3 of 5
-
-**Marital Information**
-- **Marital Status*** (Required)
-  - Type: Radio Buttons (5 options in row)
-  - Options: "Single", "Married", "Divorced", "Separated", "Widowed"
-  - Default: "Single"
-
-**Conditional: If Married Selected**
-- **Spouse Name** (Conditional - Optional)
-  - Type: Text Input
-  - Placeholder: "Spouse's full name"
-  - Shows only if "Married" is selected
-
-**Children Information**
-- **Have children or dependencies?*** (Required)
-  - Type: Radio Buttons (2 options)
-  - Options: "Yes", "No"
-  - Default: "No"
-
-**Conditional: If Yes Selected**
-- **Children Information** (Conditional - Optional)
-  - Type: Textarea
-  - Placeholder: "List your children/dependents (names, ages, etc.)"
-  - Rows: 4
-  - Max length: 1000 chars
-  - Shows only if "Yes" is selected
-
----
-
-## ⛪ STEP 4: Previous Church Information
-
-### Header
-- Title: "Previous Church Information"
-- Progress: Step 4 of 5
-
-**Transfer Status**
-- **Are you transferred from other church?** (Single column)
-  - Type: Radio Buttons (2 options)
-  - Options: "Yes", "No"
-  - Default: "No"
-
----
-
-### 🔀 BRANCH A: If "Yes" Selected (Transferred)
-
-**Church Details**
-- **Former church Name** (Conditional - Optional)
-  - Type: Text Input
-  - Placeholder: "Name of previous church"
-
-- **Date of resignation** (Conditional - Optional)
-  - Type: Date Picker
-  - Format: YYYY-MM-DD
-
-**Previous Church Spiritual Reference Information**
-Section header: "Previous Church Spiritual Reference Information (Leader, Pastor, Evangelist, etc.)"
-
-- **Title** (Conditional - Optional)
-  - Type: Dropdown
-  - Options: "Select Title", "Pastor", "Evangelist", "Elder", "Deacon", "Leader"
-
-- **Full Name** (Conditional - Optional)
-  - Type: Text Input
-  - Placeholder: "Reference person's name"
-
-- **Phone Number** (Conditional - Optional)
-  - Type: Text Input
-  - Placeholder: "+251 ..."
-  - Format: International
-
-**Reason for Resignation*** (Conditional - Required)
-- Type: Radio Buttons (7 options)
-- Options:
-  - "Due to change on residential address"
-  - "Due to job location transfer"
-  - "Due to personal affairs"
-  - "Due to conflict"
-  - "Due to marriage"
-  - "Due to academic reason"
-  - "Other"
-
-**Conditional: If "Other" Selected**
-- **Please specify** (Conditional - Optional)
-  - Type: Text Input
-  - Placeholder: "Specify the reason"
-  - Shows only if "Other" is selected
-
----
-
-### 🔀 BRANCH B: If "No" Selected (Not Transferred)
-
-**Previous Belief**
-- **What was your former belief?** (Conditional - Optional)
-  - Type: Dropdown
-  - Options:
-    - "Select belief"
-    - "Atheist"
-    - "Agnostic"
-    - "Traditional Religion"
-    - "Muslim"
-    - "Other Christian Denomination"
-    - "Other"
-
----
-
-## 🙏 STEP 5: Current Church Engagement
-
-### Header
-- Title: "Current Church Engagement"
-- Progress: Step 5 of 5
-
-**Spiritual Life Information**
-- **How did you accept Jesus christ** (Optional)
-  - Type: Textarea
-  - Placeholder: "Tell your salvation story"
-  - Rows: 4
-  - Max length: 2000 chars
-
-- **Salvation date** (Optional)
-  - Type: Date Picker
-  - Format: YYYY-MM-DD
-
-**Baptism & Membership Status**
-- **Are you baptized?*** (Required)
-  - Type: Radio Buttons (2 options)
-  - Options: "Yes", "No"
-
-- **Membership date*** (Required)
-  - Type: Date Picker
-  - Format: YYYY-MM-DD
-
-**Church Participation**
-- **Do you participate in cell group at church?** (Optional)
-  - Type: Radio Buttons (2 options)
-  - Options: "Yes", "No"
-
----
-
-### Ministry Engagement Section
-Section header: "Ministry Engagement"
-
-**Ministry Information**
-- **Your Current Ministry/Department** (Optional)
-  - Type: Dropdown
-  - Options:
-    - "Select Ministry"
-    - "Spiritual Service"
-    - "Teaching & Seminar"
-    - "Women's Ministry"
-    - "Youth Ministry"
-    - "Children Ministry"
-    - "Mission Ministry"
-    - "Stage & Worship"
-    - "Choir"
-
-- **Engagement start date** (Optional)
-  - Type: Date Picker
-  - Format: YYYY-MM-DD
-
-- **Your Role in the ministry** (Optional)
-  - Type: Text Input
-  - Placeholder: "e.g., Leader, Assistant, Member"
-
-**Gifts & Talents**
-- **Gifts and Talents** (Optional)
-  - Type: Textarea
-  - Placeholder: "List your gifts and talents"
-  - Rows: 3
-  - Max length: 1000 chars
-
-**Ministry Preferences**
-- **Ministry Preferences** (Optional)
-  - Type: Checkboxes (6 options - multiple selection allowed)
-  - Options:
-    - ☐ Spiritual
-    - ☐ Technical
-    - ☐ Art & Music
-    - ☐ Media
-    - ☐ Digital
-    - ☐ Leadership And Admin
-
----
-
-## 🎬 Form Navigation
-
-### Bottom Navigation Bar
-
-**Previous Button**
-- Disabled on Step 1
-- Enabled on Steps 2-5
-- Takes user to previous step
-- Icon: Left chevron
-
-**Next/Submit Button**
-- Steps 1-4: Shows "Next" with right chevron
-- Step 5: Shows "Submit Registration"
-- Clicking takes to next step or submits form
-- Icon: Right chevron (except submit)
-
----
-
-## 📐 Layout Grid System
-
-### Column Structure
-- **Full Width**: 1 column (labels, descriptions, large textareas)
-- **2-Column**: Important pairs (first/last, date fields)
-- **3-Column**: Groups of related fields
-- **4-Column**: Dashboard/grid views
-- **Auto**: Responsive at mobile (1 column)
-
-### Spacing
-- **Padding**: 24px (content areas)
-- **Gap**: 16px (between inputs)
-- **Margin**: 32px (between sections)
-
----
-
-## 🔍 Input Types
-
-| Type | Examples | Props |
-|------|----------|-------|
-| Text | First Name, Title | maxLength, placeholder |
-| Textarea | Gifts, Children Info | rows, maxLength |
-| Date Picker | Birth Date, Dates | min, max |
-| Dropdown | Gender, Nationality | options array |
-| Radio Button | Yes/No, Status | 2-8 options |
-| Checkbox | Preferences | multiple, options |
-| File Upload | Photo, ID | accept: "image/*" |
-
----
-
-## ✅ Validation Rules
-
-| Field | Rule | Message |
-|-------|------|---------|
-| First Name* | Required | "First name is required" |
-| Father Name* | Required | "Father name is required" |
-| Grandfather Name* | Required | "Grandfather name is required" |
-| Gender* | Required | "Please select gender" |
-| Nationality* | Required | "Please select nationality" |
-| DOB* | Required | "Date of birth required" |
-| Academic Status* | Required | "Please select status" |
-| Full Time Job* | Required | "Please select job status" |
-| Marital Status* | Required | "Please select status" |
-| Have Children* | Required | "Please select" |
-| Transferred* | Required | "Please select" |
-| Reason* | Required (if Yes) | "Please select reason" |
-| Baptized* | Required | "Please select" |
-| Membership Date* | Required | "Date is required" |
-
----
-
-## 💾 Data Structure
-
-```javascript
-{
-  // Step 1
-  title: string,
-  first_name: string*,
-  father_name: string*,
-  grandfather_name: string*,
-  gender: 'male' | 'female'*,
-  nationality: string*,
-  mothers_first_name: string,
-  mothers_father_name: string,
-  mothers_grandmother_name: string,
-  birth_country: string,
-  birth_region: string,
-  birth_zone: string,
-  birth_city: string,
-  date_of_birth: date*,
-  id_type: string,
-  id_number: string,
-  language: string,
-  photo: file,
-  id_document: file,
-  
-  // Step 2
-  academic_status: string*,
-  field_of_study: string,
-  full_time_job: string*,
-  profession: string,
-  company: string,
-  monthly_income: string,
-  part_time_job: string,
-  
-  // Step 3
-  marital_status: 'single'|'married'|'divorced'|'separated'|'widowed'*,
-  spouse_name: string,
-  has_children: 'yes' | 'no'*,
-  children_info: string,
-  
-  // Step 4
-  transferred_from_church: 'yes' | 'no'*,
-  former_church_name: string,
-  date_of_resignation: date,
-  reference_title: string,
-  reference_name: string,
-  reference_phone: string,
-  resignation_reason: string*,
-  resignation_other: string,
-  former_belief: string,
-  
-  // Step 5
-  salvation_story: string,
-  salvation_date: date,
-  is_baptized: 'yes' | 'no'*,
-  membership_date: date*,
-  cell_group_participation: 'yes' | 'no',
-  ministry_department: string,
-  ministry_start_date: date,
-  ministry_role: string,
-  gifts_talents: string[],
-  ministry_preferences: string[]
-}
+```bash
+# dry run first: validates every record and reports problems, writes nothing
+node --env-file=.env.local scripts/import-lebu-form.mjs --endpoint --dry-run
+# then for real (set ALLOW_MEMBER_IMPORT=true, LEBU_FORM_ENDPOINT, LEBU_FORM_PASSCODE in .env.local)
+node --env-file=.env.local scripts/import-lebu-form.mjs --endpoint --photos
 ```
 
----
+Instead of `--endpoint`, `--file members.json` reads a saved copy of the Apps Script `list` response. Records without a first name, father's name, sex or phone are reported and skipped. Optional values the form would never produce (for example "type O" typed into the blood-group column) are dropped from that record and reported.
 
-## 📱 Responsive Breakpoints
+## Not yet done (see the remediation plan)
 
-- **Desktop (1024px+)**: 3-4 column grids, side-by-side labels
-- **Tablet (768px-1023px)**: 2 column grids, full-width on demand
-- **Mobile (<768px)**: Single column, stacked inputs
-
----
-
-## 🎨 Field Styling
-
-- **Background**: Slate-50 (light backgrounds)
-- **Border**: Slate-200 (borders)
-- **Text**: Slate-900 (labels), Slate-600 (help text)
-- **Required**: Red asterisk (*)
-- **Error**: Red border + message
-- **Focus**: Teal ring (2px)
-- **Disabled**: Gray background, reduced opacity
-
----
-
-Version: 1.0
-Last Updated: 2026-01-31
+- Editing an existing member's registry record (the members page edits profile fields only).
+- Member self-registration and "My ID" card, and printable ID-card sheets (10 per A4), as lebu-form offers.
+- Splitting people from login accounts (`members` vs `profiles`, remediation step 3.1).
