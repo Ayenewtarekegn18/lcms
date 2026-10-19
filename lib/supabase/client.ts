@@ -19,9 +19,11 @@ Then restart your dev server with: npm run dev`
     throw new Error(errorMsg)
   }
 
-  // Validate URL format
-  if (!supabaseUrl.startsWith('https://') || !supabaseUrl.includes('.supabase.co')) {
-    throw new Error('Invalid Supabase URL format. Should be: https://your-project.supabase.co')
+  // Validate URL format (any absolute URL: hosted, custom domain, or local `supabase start` / test stack)
+  try {
+    new URL(supabaseUrl)
+  } catch {
+    throw new Error('Invalid NEXT_PUBLIC_SUPABASE_URL: ' + supabaseUrl)
   }
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
