@@ -6,7 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:up": "node --env-file-if-exists=.env.local node_modules/dbmate/dist/cli.js --no-dump-schema --migrations-table dbmate.schema_migrations up",
+    "db:down": "node --env-file-if-exists=.env.local node_modules/dbmate/dist/cli.js --no-dump-schema --migrations-table dbmate.schema_migrations rollback",
+    "db:status": "node --env-file-if-exists=.env.local node_modules/dbmate/dist/cli.js --no-dump-schema --migrations-table dbmate.schema_migrations status",
+    "db:new": "node node_modules/dbmate/dist/cli.js new",
+    "db:test": "bash db/tests/roundtrip.sh"
+  },
+  "engines": {
+    "node": ">=22.9"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -71,6 +79,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dbmate": "2.36.0",
     "eslint": "^9",
     "eslint-plugin-react": "^7",
     "eslint-plugin-react-hooks": "^5",

@@ -1,5 +1,7 @@
 # **Product Requirements Document (PRD)**
 
+> **Note (2026-10-17):** this is the original product intent. What is actually built is tracked in [STATUS.md](STATUS.md). The implementation uses Next.js + Supabase rather than the stack named in §5 (Express/Django, AWS S3, Twilio); see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## **Project Title:** Lebbu Kale Heywet Church Digital Management Platform (LKH-DMP)
 
 **Prepared by:** [Your Name / Horan Technologies]

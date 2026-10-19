@@ -1,5 +1,7 @@
 # 📋 Member Registration Form - Complete Structure
 
+> **Spec, not current behaviour (2026-10-17).** The form in `app/dashboard/members/register/page.tsx` collects these fields but saves only about 10 of them, drops the photo and ID uploads, and doesn't save children; submission currently fails. See [STATUS.md](STATUS.md) and [Remediation 2.4](REMEDIATION_GUIDE.md#24-member-registration). National-ID numbers, income and family data are sensitive; see Remediation 3.10.
+
 ## Form Overview
 - **Total Steps**: 5
 - **Total Fields**: 50+
