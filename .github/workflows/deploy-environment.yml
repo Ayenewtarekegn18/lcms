@@ -33,7 +33,7 @@ jobs:
       group: deploy-${{ inputs.environment }}
       cancel-in-progress: false
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_SECRET: ${{ secrets.DATABASE_URL }}   # cleaned into DATABASE_URL by the first step
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
@@ -44,6 +44,19 @@ jobs:
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
+
+      - name: "Database: read the connection string"
+        if: env.DATABASE_URL_SECRET != ''
+        run: |
+          # A pasted secret often carries a line break or spaces at the end; they would end up in the
+          # database name ('database "postgres<newline>" does not exist').
+          url=$(printf '%s' "$DATABASE_URL_SECRET" | tr -d '\r\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+          case "$url" in
+            postgres://*|postgresql://*) ;;
+            *) echo "::error::DATABASE_URL in the '${{ inputs.environment }}' environment must start with postgresql:// (no 'DATABASE_URL=' in front, no quotes)"; exit 1 ;;
+          esac
+          echo "::add-mask::$url"
+          echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
 
       - name: "Database: is it under dbmate?"
         if: env.DATABASE_URL != ''
