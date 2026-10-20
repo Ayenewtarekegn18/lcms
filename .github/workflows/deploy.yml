@@ -1,0 +1,60 @@
+# Deploys only what CI has passed:
+#   merge to main      → staging, automatically
+#   published release  → production, after approval (GitHub environment "production")
+# Manual runs (Actions → Deploy → Run workflow) redeploy a branch, tag or commit, for example to roll
+# the app back to an earlier release; production still waits for approval.
+# How environments, releases and secrets fit together: docs/ENGINEERING.md. Setup: docs/SETUP.md §7.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, "v*"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+      ref:
+        description: Branch, tag or commit to deploy
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    # push events only: pull requests (including from forks) never deploy
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    uses: ./.github/workflows/deploy-environment.yml
+    with:
+      environment: staging
+      ref: ${{ github.event.workflow_run.head_sha }}
+    secrets: inherit
+
+  production:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'release'
+    uses: ./.github/workflows/deploy-environment.yml
+    with:
+      environment: production
+      ref: ${{ github.event.workflow_run.head_sha }}
+    secrets: inherit
+
+  manual:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/deploy-environment.yml
+    with:
+      environment: ${{ inputs.environment }}
+      ref: ${{ inputs.ref }}
+    secrets: inherit

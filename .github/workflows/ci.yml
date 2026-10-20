@@ -1,11 +1,13 @@
-# Checks every pull request and every push to main; deploys main once everything passes.
-# Secrets and the one-time setup are described in docs/SETUP.md → "CI/CD".
+# Checks every pull request, every push to main and every published release. Deploying is a
+# separate workflow (deploy.yml) that starts only when this one has passed. See docs/ENGINEERING.md.
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -110,48 +112,3 @@ jobs:
             stack.log
             gateway.log
           retention-days: 7
-
-  deploy:
-    name: Migrate and deploy production
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [quality, database, e2e]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    # Add required reviewers to this environment (Settings → Environments) to approve each release.
-    environment: production
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    env:
-      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - name: Check the production database is under dbmate
-        if: env.DATABASE_URL != ''
-        run: |
-          # A database created before the migrations existed must be adopted once
-          # (db/scripts/adopt_existing_database.sql), or dbmate would re-run the baseline on it.
-          state=$(psql "$DATABASE_URL" -tA -c "SELECT CASE WHEN to_regclass('dbmate.schema_migrations') IS NOT NULL THEN 'managed' WHEN to_regclass('public.profiles') IS NOT NULL THEN 'unadopted' ELSE 'empty' END")
-          echo "production database: $state"
-          if [ "$state" = unadopted ]; then
-            echo "::error::Run db/scripts/adopt_existing_database.sql on production first (docs/REMEDIATION_GUIDE.md step 1.1)"
-            exit 1
-          fi
-      - name: Migrate production
-        if: env.DATABASE_URL != ''
-        run: npm run db:up
-      - name: Deploy to Vercel
-        if: env.VERCEL_TOKEN != ''
-        run: |
-          npx --yes vercel@62.2.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
-          npx --yes vercel@62.2.0 build --prod --token="$VERCEL_TOKEN"
-          npx --yes vercel@62.2.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
-      - name: Nothing to do
-        if: env.DATABASE_URL == '' && env.VERCEL_TOKEN == ''
-        run: echo "::notice::PRODUCTION_DATABASE_URL and VERCEL_TOKEN are not set; skipped migrating and deploying (docs/SETUP.md → CI/CD)"

@@ -1,0 +1,98 @@
+# One deployment to one environment (called by deploy.yml):
+#   1. the database must already be under dbmate (an older hand-built database is adopted once)
+#   2. apply pending migrations          (environment secret DATABASE_URL)
+#   3. staging only: run the RLS checks against the migrated database
+#   4. build and deploy the app to Vercel (secret VERCEL_TOKEN, variables VERCEL_ORG_ID / VERCEL_PROJECT_ID)
+# Each part is skipped, with a notice, until its settings exist (docs/SETUP.md §7).
+# Migrations run before the new app goes live, so every migration must keep the previous release
+# working (docs/ENGINEERING.md → Database changes).
+name: Deploy to an environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      ref:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.app.outputs.url }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v5
+        with: { ref: "${{ inputs.ref }}" }
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+
+      - name: "Database: is it under dbmate?"
+        if: env.DATABASE_URL != ''
+        run: |
+          state=$(docker run --rm postgres:17.5 psql "$DATABASE_URL" -tAc "SELECT CASE WHEN to_regclass('dbmate.schema_migrations') IS NOT NULL THEN 'managed' WHEN to_regclass('public.profiles') IS NOT NULL THEN 'unadopted' ELSE 'empty' END")
+          echo "${{ inputs.environment }} database: $state"
+          if [ "$state" = unadopted ]; then
+            echo "::error::This database was built by hand. Adopt it once (db/scripts/adopt_existing_database.sql, REMEDIATION_GUIDE 1.1) before the pipeline can manage it."
+            exit 1
+          fi
+
+      - name: "Database: apply pending migrations"
+        if: env.DATABASE_URL != ''
+        run: |
+          {
+            echo "### ${{ inputs.environment }} database"
+            echo '```'
+            npm run -s db:status | grep -E '^\[ \]|Applied|Pending'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          npm run -s db:up
+          npm run -s db:status | tail -2
+
+      - name: "Database: RLS checks (staging only)"
+        if: env.DATABASE_URL != '' && inputs.environment == 'staging'
+        run: |
+          docker run --rm -i postgres:17.5 psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 \
+            < db/tests/verify_security.sql 2>&1 | sed -n '/verify_security/,$p'
+
+      - name: "App: build and deploy to Vercel"
+        id: app
+        if: env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
+        run: |
+          vercel() { npx --yes vercel@62.2.0 "$@" --token="$VERCEL_TOKEN"; }
+          if [ "${{ inputs.environment }}" = production ]; then
+            vercel pull --yes --environment=production
+            vercel build --prod
+            url=$(vercel deploy --prebuilt --prod)
+          else
+            # staging is a Vercel preview deployment; its variables point at the staging database
+            vercel pull --yes --environment=preview
+            vercel build
+            url=$(vercel deploy --prebuilt)
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### App: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: What was skipped
+        if: always()
+        run: |
+          [ -n "$DATABASE_URL" ] || echo "::notice::No DATABASE_URL secret in the '${{ inputs.environment }}' environment: database not migrated (docs/SETUP.md §7)"
+          [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ] || echo "::notice::Vercel is not configured: app not deployed (docs/SETUP.md §7)"

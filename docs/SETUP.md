@@ -29,7 +29,7 @@ Fill in `.env.local` from Supabase Dashboard → **Project Settings → API**:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | **no**: it ships to every browser; RLS is what protects data | the app |
 | `SUPABASE_SERVICE_ROLE_KEY` | only for the demo seed | **yes**: bypasses all security | `scripts/setup-demo-accounts.js` |
 | `ALLOW_DEMO_SEED`, `DEMO_ADMIN_PASSWORD`, `DEMO_USER_PASSWORD` | only for the demo seed | yes | see [DEMO_SETUP.md](DEMO_SETUP.md) |
-| `DATABASE_URL` | for `npm run db:*` | yes | the database migrations are applied to (local/staging); the app never reads it |
+| `DATABASE_URL` | for `npm run db:*` | yes | your **local** database, for writing and testing migrations. Staging and production are migrated only by the Deploy workflow. The app never reads it |
 
 Rules:
 - `.env.local` goes in the project root.
@@ -40,17 +40,18 @@ Rules:
 
 ## 3. Build the database
 
-The schema lives in [`db/migrations/`](../db/migrations/) as **dbmate** migrations (each file has an up and a down section). Add the database to `.env.local`:
+The schema lives in [`db/migrations/`](../db/migrations/) as **dbmate** migrations (each file has an up and a down section). For development, point `.env.local` at a **local** database. Staging and production are changed only by the Deploy workflow (§7, [ENGINEERING.md](ENGINEERING.md)).
 
 ```bash
-# local (npx supabase start) or a staging/new Supabase project. Never production for day-to-day work.
+# local database (npx supabase start, or any Postgres in Docker with db/tests/supabase_shim.sql)
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
 ```
 
 | Situation | Do |
 |---|---|
-| **New or local project** | `npm run db:up`: builds all 66 tables, the security policies, audit triggers and integrity rules from zero. Then run [`db/tests/verify_security.sql`](../db/tests/verify_security.sql) in the SQL editor ("Success" = every access check passed). |
-| **Existing project built from the old scripts** (the live one) | Don't run the old scripts. Follow [REMEDIATION_GUIDE.md Phase 0](REMEDIATION_GUIDE.md#phase-0--contain-today), then [step 1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible): `db/scripts/adopt_existing_database.sql` once, then `npm run db:up`. |
+| **Local database** | `npm run db:up`: builds all 66 tables, the security policies, audit triggers and integrity rules from zero. Then run [`db/tests/verify_security.sql`](../db/tests/verify_security.sql) against it ("all … checks passed"). |
+| **Staging or production** | Never by hand. The Deploy workflow applies the migrations after CI passes (§7). A new, empty project is built from zero by its first deploy. |
+| **A project built from the old scripts** | Don't run the old scripts. Adopt it once: [REMEDIATION_GUIDE.md Phase 0](REMEDIATION_GUIDE.md#phase-0--contain-today), then [step 1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible). (Staging was adopted on 2026-10-20.) |
 | **Roll back the last migration** | `npm run db:down` (security migrations refuse unless explicitly unlocked; see step 1.1). |
 | **See what's applied** | `npm run db:status` |
 | **Change the schema** | `npm run db:new <name>`, write both sections, then `db:up` → `db:down` → `db:up` locally; CI's round-trip test checks the down is exact. |
@@ -79,10 +80,10 @@ Sign out and back in. Roles are explained in [ROLES_AND_ACCESS.md](ROLES_AND_ACC
 
 ## 5. Deploy (Vercel)
 
-1. Import the repo in Vercel.
-2. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` per environment: *Preview* points at a staging Supabase project, *Production* at the production project. Do **not** add the service-role key or any `POSTGRES_*` values; the app doesn't need them.
-3. Redeploy after changing environment variables (`NEXT_PUBLIC_*` values are baked in at build time).
-4. In the production Supabase project: sign-ups off, Site URL set to the production domain, no demo accounts, backups on (see [REMEDIATION_GUIDE.md 0.6](REMEDIATION_GUIDE.md#06-stop-the-project-from-silently-disappearing)).
+Deploys are done by the pipeline, not by hand: §7 covers the one-time Vercel setup. Points to keep in mind:
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set per Vercel environment: **Preview** → staging, **Production** → production. Don't add the service-role key or any `POSTGRES_*` values; the app doesn't need them.
+- `NEXT_PUBLIC_*` values are baked in at build time, so redeploy after changing them (Actions → Deploy → Run workflow).
+- In every Supabase project that's reachable online: sign-ups off, Site URL set, no demo accounts. Production also needs backups on ([REMEDIATION_GUIDE.md 0.6](REMEDIATION_GUIDE.md#06-stop-the-project-from-silently-disappearing)).
 
 ## 6. Testing
 
@@ -117,32 +118,55 @@ The exported variables override `.env.local`, so this build points at the test s
 
 ## 7. CI/CD
 
-[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on every pull request and on pushes to `main`:
+How environments, releases and database changes fit together is in [ENGINEERING.md](ENGINEERING.md). The workflows:
 
-| Job | Runs |
-|---|---|
-| Types, lint, unit tests, audit | `tsc`, `eslint`, `vitest`, `npm audit --omit=dev --audit-level=high` |
-| Migrations | `npm run db:test` on a fresh Postgres 17 |
-| End-to-end | the test stack, migrations, seed, `next build`, Playwright (report uploaded when it fails) |
-| Migrate and deploy production | only on `main`, only after the three jobs above pass |
+| Workflow | When it runs | What it does |
+|---|---|---|
+| [CI](../.github/workflows/ci.yml) | Every PR, every push to `main`, every published release | Types, lint, unit tests and audit; the migration round trip and RLS checks; end-to-end tests |
+| [Deploy](../.github/workflows/deploy.yml) | After CI passes: on `main` → **staging**; on a release → **production**, after your approval. Also by hand (Run workflow) to redeploy or roll back | Checks the database is under dbmate, applies pending migrations, runs the RLS checks (staging only), then builds and deploys the app to Vercel |
+| [Keep Supabase warm](../.github/workflows/keepalive.yml) | Every 10 minutes | See §8 |
+| [Dependabot](../.github/dependabot.yml) | Weekly | Update PRs |
 
-The deploy job does nothing until you configure it (it says so in the run log). To turn it on:
-1. **Settings → Environments → New environment** `production`. Add yourself as a required reviewer, so every release waits for your approval.
-2. Adopt the production database once ([REMEDIATION_GUIDE 1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible)). The job refuses to migrate a database that hasn't been adopted.
-3. Environment secrets:
+Each part of Deploy is skipped, with a notice in the run, until its settings exist. Set them up once.
 
-| Secret | Value |
-|---|---|
-| `PRODUCTION_DATABASE_URL` | Supabase → Connect → **Session pooler** URI (port 5432), with `?sslmode=require` |
-| `VERCEL_TOKEN` | Vercel → Account Settings → Tokens |
-| `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | `.vercel/project.json` after `npx vercel link`, or the project's Settings page |
+### Staging database
 
-4. Stop Vercel's Git integration deploying `main` by itself, so production is deployed only after the migrations ran: add `{"git": {"deploymentEnabled": {"main": false}}}` to `vercel.json` in the same PR that adds the secrets. Preview deployments for pull requests stay on.
-5. **Settings → Branches → Add rule** for `main`: require a pull request, one approval, and the three CI checks.
+The current Supabase project is staging.
+1. GitHub → **Settings → Environments → New environment** `staging`.
+2. **Add environment secret** `DATABASE_URL`: the session-pooler connection string (Supabase → Connect → Session pooler, with your database password and `?sslmode=require`). It's the same value you have in `.env.local` today. After this, remove that line from `.env.local` or point it at a local database. Staging is now changed only by the pipeline.
+3. **Actions → Deploy → Run workflow**, environment `staging`, ref `main`. The run should show `Pending: 0` and `verify_security: all 24 checks passed`.
 
-Migrations run before the new code is deployed, so a migration must keep the previous release working (add columns and tables first; drop or rename only in a later release).
+### App hosting (Vercel)
 
-[Dependabot](../.github/dependabot.yml) opens weekly update PRs for npm packages and GitHub Actions; it waits 14 days after each release before proposing it. The `overrides` in `package.json` hold back three packages of the test tooling (`rolldown`, `tinybench`, and `postcss` inside `vite`) that were only days old when it was added; when a Dependabot PR for `vite` or `vitest` conflicts with them, delete the overrides in that PR.
+1. In Supabase, turn off **"Allow new users to sign up"** (Authentication → Sign In / Providers) **before** the app is reachable online.
+2. [vercel.com](https://vercel.com) → **Continue with GitHub** → **Add New… → Project** → import `lcms`. Under **Environment Variables**, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` with the staging values from `.env.local`.
+   - The Git connection gives every pull request its own preview site.
+   - `vercel.json` stops Vercel deploying `main` by itself; the pipeline does that after migrating. The deployment Vercel makes when you first import can be ignored.
+3. Vercel → **Account Settings → Tokens** → create a token for GitHub Actions. In GitHub → **Settings → Secrets and variables → Actions**:
+   - secret `VERCEL_TOKEN`;
+   - variables `VERCEL_ORG_ID` (Vercel → Settings → General → Team ID) and `VERCEL_PROJECT_ID` (project → Settings → General → Project ID).
+4. Run **Deploy** for `staging` again. The run summary and the `staging` environment now link to the app.
+
+Preview sites, staging included, are visible only to people signed in to your Vercel account (Vercel's default deployment protection).
+
+### Production (at go-live)
+
+1. Create a **new** Supabase project on a paid plan, for daily backups and no pausing. Turn off sign-ups, and set the Site URL to the production domain.
+2. GitHub environment `production`: secret `DATABASE_URL` (its session pooler), and **Required reviewers**: you.
+3. Vercel → project → **Settings → Environment Variables**: give **Production** the new project's URL and anon key.
+4. Publish a GitHub release `v1.0.0` (Releases → Draft a new release → new tag). CI runs on the tag, then Deploy waits for your approval. It builds the whole schema on the empty database and deploys the app.
+5. Create the first admin: invite yourself (Authentication → Users → Invite), sign in once, then run the `UPDATE public.profiles SET role = 'admin' …` from §4 in the SQL editor. This is the only SQL anyone runs by hand, once per new project.
+
+### Branch protection
+
+Until the ruleset file arrives (ENGINEERING.md step 3): GitHub → **Settings → Rules → Rulesets → New branch ruleset** for `main`:
+- require a pull request (0 approvals while you work alone);
+- require the three CI checks: **Types, lint, unit tests, audit**, **Migrations (up/down round trip) and RLS checks** and **End-to-end (Playwright)**;
+- block force pushes and deletion.
+
+### Dependabot and overrides
+
+Dependabot waits 14 days after each release before proposing it. The `overrides` in `package.json` hold back three packages of the test tooling (`rolldown`, `tinybench`, and `postcss` inside `vite`) that were only days old when it was added. When a Dependabot PR for `vite` or `vitest` conflicts with them, delete the overrides in that PR.
 
 ## 8. Keep-warm ping
 

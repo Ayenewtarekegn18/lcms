@@ -3,6 +3,7 @@
 | Document | Read it when you want to… |
 |---|---|
 | [SETUP.md](SETUP.md) | run the app, configure `.env.local`, build a Supabase project, run the tests, set up CI/CD and the keep-warm ping, deploy |
+| [ENGINEERING.md](ENGINEERING.md) | learn how changes are made, tested, released and deployed (environments, database changes, PRs, releases, secrets) |
 | [STATUS.md](STATUS.md) | know what actually works today |
 | [REMEDIATION_GUIDE.md](REMEDIATION_GUIDE.md) | fix the project, step by step, with the code and SQL included |
 | [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) | understand the risks, root causes and target design (findings F-01…F-41) |
