@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import { checkSettings } from "./lib/env";
+
+// Stop here, with a clear message, when the Supabase settings are missing (lib/env.ts).
+checkSettings();
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: __dirname,
