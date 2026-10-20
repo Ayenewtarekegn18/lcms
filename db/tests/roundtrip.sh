@@ -44,6 +44,8 @@ done < <(ls db/migrations/*.sql | sort -r)
 if out=$($DBMATE rollback 2>&1); then echo "FAIL: rls_rewrite rolled back without lkhc.allow_insecure_downgrade"; exit 1; fi
 echo "$out" | grep -q "Refusing to roll back a security migration" || { echo "FAIL: rollback failed for another reason:"; echo "$out" | tail -5; exit 1; }
 echo "   ok: refused"
+echo "== verify_security on a partly migrated database (later tables absent, as on a live project mid-upgrade)"
+$PSQL -q -v ON_ERROR_STOP=1 < db/tests/verify_security.sql
 $DBMATE up >/dev/null
 
 setflag "SET lkhc.allow_insecure_downgrade = 'on'"

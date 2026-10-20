@@ -181,9 +181,13 @@ BEGIN
        OR details::text LIKE '%verify_security%';
   END IF;
 
-  -- give back the member number the test registration used, unless a real registration came after it
-  IF test_number IS NOT NULL AND (SELECT last_value FROM public.member_number_seq) = test_number THEN
-    PERFORM setval('public.member_number_seq', seq_last, seq_called);
+  -- give back the member number the test registration used, unless a real registration came after it.
+  -- Nested IF: PL/pgSQL plans a whole condition at once, so the sequence must not appear in it
+  -- on databases that don't have the member registry yet (Phase 0, before npm run db:up).
+  IF test_number IS NOT NULL THEN
+    IF (SELECT last_value FROM public.member_number_seq) = test_number THEN
+      PERFORM setval('public.member_number_seq', seq_last, seq_called);
+    END IF;
   END IF;
 
   IF failures <> '' THEN
