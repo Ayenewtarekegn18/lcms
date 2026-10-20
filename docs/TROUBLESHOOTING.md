@@ -11,13 +11,23 @@ The app can't reach the Supabase project in `.env.local`.
 
 To catch this before users do, see [Remediation 0.6](REMEDIATION_GUIDE.md#06-stop-the-project-from-silently-disappearing) (uptime checks).
 
+## "Missing or invalid settings" when starting or building / "Internal Server Error" on every page
+
+`NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` is missing, or was pasted with a space or line break. The message names which one. Since `lib/env.ts`, `next dev`, `next build` and `next start` stop with this message. A deployment built before that check, or without those variables, answers every page with a bare "Internal Server Error".
+- **On your computer:** fix `.env.local` (project root, no quotes) and restart `npm run dev`.
+- **On Vercel:** Project → **Settings → Environment Variables**. Add both for each environment that's deployed (Production and Preview), then **redeploy**. `NEXT_PUBLIC_*` values are baked in at build time, so changing them doesn't fix a deployment that's already built.
+
 ## "Configuration error: Supabase credentials not found" / "Missing Supabase environment variables"
 
 `.env.local` is missing, in the wrong folder (it belongs in the project root), or the variables aren't prefixed with `NEXT_PUBLIC_`. Fix it and restart the dev server.
 
 ## "Invalid Supabase URL format"
 
-The browser client currently accepts only `https://<ref>.supabase.co`. Local Supabase (`http://127.0.0.1:54321`) and custom domains need [Remediation 1.1 step 7](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible).
+Fixed: the browser client accepts any valid Supabase URL, including local Supabase (`http://127.0.0.1:54321`) and custom domains.
+
+## "Use camera" on the registration form says permission was denied
+
+Allow the camera for the site in the browser (the camera icon in the address bar). The site's `Permissions-Policy` header allows the camera for the site itself (`camera=(self)`). Before that change it blocked the camera everywhere.
 
 ## Port 3000 already in use
 

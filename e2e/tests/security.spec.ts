@@ -42,6 +42,13 @@ test('API errors do not leak table or column names', async ({ page }) => {
   expect(await res.text()).not.toMatch(/profiles|column|relation/i)
 })
 
+test('security headers allow the camera for member photos and nothing else', async ({ request }) => {
+  const policy = (await request.get('/auth/login')).headers()['permissions-policy']
+  expect(policy).toContain('camera=(self)')
+  expect(policy).toContain('microphone=()')
+  expect(policy).toContain('geolocation=()')
+})
+
 test('keep-warm endpoint reaches the database', async ({ request }) => {
   const res = await request.get('/api/keepalive')
   expect(res.status()).toBe(200)
