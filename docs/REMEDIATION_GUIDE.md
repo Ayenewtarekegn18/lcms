@@ -40,7 +40,7 @@ Files used by this guide:
 
 ## Progress
 
-The code fixes are on these branches. Each builds on the previous one, so **merge them in this order** (each passes `tsc`, `eslint` and `next build`):
+The code fixes landed in these branches, merged into `main` in this order on 2026-10-19 (PRs #1, #2, #4, #5, #6):
 
 | # | Branch | Closes |
 |---|---|---|
@@ -49,8 +49,15 @@ The code fixes are on these branches. Each builds on the previous one, so **merg
 | 3 | `feat/db-migrations-and-docs` | These docs; 1.1 dbmate migrations with up and down, adoption script and round-trip test; F-29 local Supabase URLs |
 | 4 | `feat/member-registration-lebu-form` | 2.4 registration matching the lebu-form register, member numbers, photos, lebu-form importer |
 | 5 | `ci/pipeline-tests-and-keepalive` | 3.6 unit and e2e tests and CI/CD; 0.6 keep-warm ping |
+| 6 | `fix/verify-security-before-migrations` | `verify_security.sql` works on partly migrated databases; CI checks that state |
+| 7 | `ci/environments-and-automatic-deploys` | Staging and production environments; the Deploy workflow migrates and deploys after CI ([ENGINEERING.md](ENGINEERING.md)) |
 
-Merging changes no data. The live project changes only when you run the Phase 0 steps and `npm run db:up` against it (or the pipeline does, once `PRODUCTION_DATABASE_URL` is set).
+**Database:** on 2026-10-20 the Supabase project (now **staging**, test data) went through Phase 0 and was adopted:
+- the demo logins were removed and the lockdown applied;
+- all 14 migrations were applied, and `verify_security.sql` passes all 24 checks;
+- anonymous reads are refused.
+
+From now on, the Deploy workflow applies migrations; nobody runs them by hand. A production project is created at go-live ([SETUP.md §7](SETUP.md#7-cicd)).
 
 
 ---

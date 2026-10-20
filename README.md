@@ -22,6 +22,7 @@ Building the database for a new Supabase project, creating the first admin and d
 
 | | |
 |---|---|
+| [Engineering guide](docs/ENGINEERING.md) | How changes are made, tested, released and deployed |
 | [Setup](docs/SETUP.md) | Install, environment variables, migrations, testing, CI/CD, keep-warm ping |
 | [Status](docs/STATUS.md) | What works and what doesn't, per module |
 | [Remediation guide](docs/REMEDIATION_GUIDE.md) | Step-by-step fix plan with code and SQL |
