@@ -8,48 +8,68 @@ How to run LKHC locally and how to build a new Supabase project for it. This rep
 
 | Tool | Version | Why |
 |---|---|---|
-| Node.js | **≥ 22.18** (22 LTS or 24) | Next.js 16; `node --env-file-if-exists` (db scripts) and built-in TypeScript loading (member import) |
-| npm | 10+ | Lockfile is `package-lock.json` |
-| A Supabase project | free tier is fine for development | Postgres, Auth, Storage |
+| Node.js | **≥ 22.18** (22 LTS or 24) | Next.js 16; `node --env-file-if-exists` (db scripts) and built-in TypeScript loading (scripts) |
+| npm | 10+ | The lockfile is `package-lock.json` |
+| Docker Desktop | running, with **4 GB or more** memory | Your local Supabase (`npm run local:start`) |
 
-Local Supabase works too: `npx supabase start` (Docker), then use the printed API URL and anon key in `.env.local` and `postgresql://postgres:postgres@127.0.0.1:54322/postgres` as `DATABASE_URL`.
+You don't need a Supabase account to develop. Staging and production are set up once (§7), and the pipeline changes them.
 
-## 2. Install and configure
+## 2. Install and start
 
 ```bash
 npm install
-cp .env.example .env.local
+npm run local:start    # the first run downloads the Supabase images (a few minutes)
+npm run dev            # http://localhost:3000
 ```
 
-Fill in `.env.local` from Supabase Dashboard → **Project Settings → API**:
+`local:start` gives you your own Supabase in Docker, with:
+- **Postgres 17** with every migration from `db/migrations` applied;
+- **Auth** (sign-ups off, as on staging);
+- **Storage**;
+- **Studio**: a database UI, at http://127.0.0.1:54323;
+- **Mailpit**: catches invitation and password-reset emails, at http://127.0.0.1:54324.
 
-| Variable | Required | Secret? | Used by |
-|---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | yes | no | the app (browser and server) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | **no**: it ships to every browser; RLS is what protects data | the app |
-| `SUPABASE_SERVICE_ROLE_KEY` | only for the demo seed | **yes**: bypasses all security | `scripts/setup-demo-accounts.js` |
-| `ALLOW_DEMO_SEED`, `DEMO_ADMIN_PASSWORD`, `DEMO_USER_PASSWORD` | only for the demo seed | yes | see [DEMO_SETUP.md](DEMO_SETUP.md) |
-| `DATABASE_URL` | for `npm run db:*` | yes | your **local** database, for writing and testing migrations. Staging and production are migrated only by the Deploy workflow. The app never reads it |
+It also creates one login per role (password `Local-Test-Password-1`) and some sample data: ministries, events, transactions and registered members. It writes `.env.development.local`, which `npm run dev` reads ahead of `.env.local`, so the app talks to your local stack.
+
+| Login | Role |
+|---|---|
+| `admin@lkhc.test` | admin |
+| `elder@lkhc.test` | elder |
+| `leader@lkhc.test` | ministry_leader |
+| `finance@lkhc.test` | finance |
+| `member@lkhc.test` | member |
+
+| Command | Does |
+|---|---|
+| `npm run local:start` | Starts the stack, or reuses it if it's already running. Applies new migrations, tops up the test data, and prints the addresses |
+| `npm run local:reset` | Wipes the local database and rebuilds it (migrations, then test data) |
+| `npm run local:stop` | Stops the stack and removes `.env.development.local` |
+| `npm run local:status` | Addresses and logins |
+
+### `.env.local` (optional)
+
+You only need `.env.local` to run the app against **staging** instead (stop the local stack first) or to import lebu-form records. Copy `.env.example` and fill in values from Supabase → **Project Settings → API**:
+
+| Variable | Secret? | Used by |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | no | the app (browser and server) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **no**: it ships to every browser; RLS is what protects data | the app |
+| `SUPABASE_SERVICE_ROLE_KEY` | **yes**: bypasses all security | scripts only (`import:lebu-form`, demo seed) |
+| `DATABASE_URL` | yes | `npm run db:*` against a database **other than** the local stack. Never staging or production; the Deploy workflow migrates those |
 
 Rules:
-- `.env.local` goes in the project root.
-- No quotes and no trailing slash on the URL.
+- No quotes, and no trailing slash on the URL.
 - Restart `npm run dev` after any change.
-- Never commit `.env.local` (it's git-ignored; only `.env.example` is tracked).
+- Never commit env files; only `.env.example` is tracked.
 - Never prefix the service-role key with `NEXT_PUBLIC_`.
 
 ## 3. Build the database
 
-The schema lives in [`db/migrations/`](../db/migrations/) as **dbmate** migrations (each file has an up and a down section). For development, point `.env.local` at a **local** database. Staging and production are changed only by the Deploy workflow (§7, [ENGINEERING.md](ENGINEERING.md)).
-
-```bash
-# local database (npx supabase start, or any Postgres in Docker with db/tests/supabase_shim.sql)
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
-```
+The schema lives in [`db/migrations/`](../db/migrations/) as **dbmate** migrations (each file has an up and a down section). `npm run local:start` applies them to your local stack, and the `db:*` commands use the local stack while it's running. Staging and production are changed only by the Deploy workflow (§7, [ENGINEERING.md](ENGINEERING.md)).
 
 | Situation | Do |
 |---|---|
-| **Local database** | `npm run db:up`: builds all 66 tables, the security policies, audit triggers and integrity rules from zero. Then run [`db/tests/verify_security.sql`](../db/tests/verify_security.sql) against it ("all … checks passed"). |
+| **Local database** | `npm run local:start` (or `npm run db:up` after adding a migration) builds all the tables, security policies, audit triggers and integrity rules from zero. `npm run local:reset` starts over. |
 | **Staging or production** | Never by hand. The Deploy workflow applies the migrations after CI passes (§7). A new, empty project is built from zero by its first deploy. |
 | **A project built from the old scripts** | Don't run the old scripts. Adopt it once: [REMEDIATION_GUIDE.md Phase 0](REMEDIATION_GUIDE.md#phase-0--contain-today), then [step 1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible). (Staging was adopted on 2026-10-20.) |
 | **Roll back the last migration** | `npm run db:down` (security migrations refuse unless explicitly unlocked; see step 1.1). |
@@ -90,8 +110,15 @@ Deploys are done by the pipeline, not by hand: §7 covers the one-time Vercel se
 | Command | What | Needs |
 |---|---|---|
 | `npm test` | Unit tests (Vitest, `tests/unit/`) | nothing |
-| `npm run db:test` | Every migration up → down → up with an identical schema, then `verify_security.sql` | a **throwaway** Postgres with [`db/tests/supabase_shim.sql`](../db/tests/supabase_shim.sql) applied, `DATABASE_URL`, and `PSQL`/`PG_DUMP` if the client tools aren't on your PATH |
-| `npm run test:e2e` | Playwright (`e2e/tests/`) against `npm run start` | the test stack below and a build made against it |
+| `npm run test:e2e` | Playwright (`e2e/tests/`) against a production build of the app | the local stack (`npm run local:start`). The tests refuse to run against any other Supabase |
+| `npm run db:test` | Every migration up → down → up with an identical schema, then `verify_security.sql` | a **throwaway** Postgres (below). It rolls migrations back, so never point it at a database you care about |
+
+End-to-end tests locally, the same way CI runs them:
+```bash
+npm run local:start
+PW_CHANNEL=chrome npm run test:e2e   # builds the app against the local stack, then runs the tests; PW_CHANNEL=chrome uses your Chrome
+```
+The tests build and start their own copy of the app on port 3100, so an app you're running yourself on :3000 is never used. They log in as the test accounts above and create data; `npm run local:reset` cleans it up.
 
 Throwaway database for `db:test` (Docker):
 ```bash
@@ -101,20 +128,6 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:55441/postgres?sslmode=disa
   PSQL="docker exec -i lkhc-rt psql -U postgres" PG_DUMP="docker exec lkhc-rt pg_dump -U postgres" npm run db:test
 docker rm -f lkhc-rt
 ```
-
-End-to-end tests locally (the same steps CI runs; test-only keys, never real data):
-```bash
-export DATABASE_URL="postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable"
-npm run e2e:stack -- db auth              # Postgres + GoTrue (Docker)
-npm run db:up                              # migrations into the test database
-npm run e2e:stack -- rest                  # PostgREST (after the migrations, so it sees the schema)
-node e2e/stack/gateway.mjs &               # Supabase-style API on http://127.0.0.1:54321
-export $(node e2e/stack/keys.mjs) NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-npm run e2e:seed                           # one user per role (e2e/users.ts)
-npm run build && PW_CHANNEL=chrome npm run test:e2e   # PW_CHANNEL=chrome uses your installed Chrome
-docker compose -f e2e/stack/docker-compose.yml down -v   # when done
-```
-The exported variables override `.env.local`, so this build points at the test stack. **Run `npm run build` again without them** before using `npm start` against your real project.
 
 ## 7. CI/CD
 

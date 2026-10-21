@@ -14,12 +14,12 @@ How LKHC is built, changed and released. It applies to every change, whoever mak
 
 | | Local | CI | Staging | Production |
 |---|---|---|---|---|
-| **Database** | Postgres in Docker on your machine | A throwaway database for every run | The current Supabase project (test data) | A separate Supabase project, created at go-live on a paid plan (daily backups, no pausing) |
+| **Database** | Your own Supabase in Docker (`npm run local:start`): Postgres, Auth, Storage, Studio, Mailpit | Throwaway: the same local stack for e2e, plain Postgres for the migration round trip | The current Supabase project (test data) | A separate Supabase project, created at go-live on a paid plan (daily backups, no pausing) |
 | **App** | `npm run dev` | `next build`, then Playwright | Vercel preview deployment of `main` | Vercel production deployment |
 | **Changed by** | You | The pipeline, on every PR | The pipeline, on every merge to `main` | The pipeline, on a published release, after your approval |
-| **Data** | Seed and test data | Generated | Test data | Real members |
+| **Data** | Test logins per role and sample data (`scripts/local.mjs`) | The same | Test data | Real members |
 
-`DATABASE_URL` in `.env.local` points at your **local** database, never at staging or production.
+Develop and test against the local stack. Nobody's `.env.local` holds a staging or production `DATABASE_URL`.
 
 ## How a change flows
 
@@ -99,7 +99,8 @@ A change is done when:
 | Step | What | Status |
 |---|---|---|
 | 1 | Environments and automatic deploys (this guide, `deploy.yml`) | ✅ |
-| 2 | Local development on the Supabase CLI (local Auth, Storage, Studio, seed data); Supabase settings as code | ⬜ |
+| 2a | Local development on the Supabase CLI (local Auth, Storage, Studio, Mailpit, test logins and sample data); CI's end-to-end tests use the same stack | ✅ |
+| 2b | Supabase settings (sign-ups, URLs, password rules) as code, applied to staging and production by the pipeline | ⬜ |
 | 3 | Repository rules as code (branch ruleset, PR and issue templates, CODEOWNERS), automated releases and changelog, CodeQL | ⬜ |
 | 4 | Code structure: feature modules, a server-side data layer, database types generated from the schema and checked in CI | ⬜ |
 | 5 | Features on that foundation: Phase 2 and the Frontend & UI track; monitoring and alerting before go-live | ⬜ |

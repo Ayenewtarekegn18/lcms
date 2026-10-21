@@ -10,10 +10,12 @@ Web platform for church operations: members, ministries, events, finances, commu
 
 ## Quick start
 
+Needs Node.js 22.18+ and Docker Desktop.
+
 ```bash
 npm install
-cp .env.example .env.local      # add your Supabase URL and anon key
-npm run dev                     # http://localhost:3000
+npm run local:start     # your own Supabase in Docker: migrations, test logins, sample data
+npm run dev             # http://localhost:3000, sign in as admin@lkhc.test / Local-Test-Password-1
 ```
 
 Building the database for a new Supabase project, creating the first admin and deploying are covered in **[docs/SETUP.md](docs/SETUP.md)**.
@@ -36,12 +38,13 @@ Building the database for a new Supabase project, creating the first admin and d
 
 | Command | |
 |---|---|
-| `npm run dev` | Development server |
+| `npm run local:start` / `local:stop` / `local:reset` | Your local Supabase: start (migrate and seed), stop, rebuild from scratch |
+| `npm run dev` | Development server (uses the local stack while it's running) |
 | `npm run build` / `npm start` | Production build / serve |
 | `npm run lint` | ESLint |
 | `npm test` | Unit tests (Vitest) |
-| `npm run test:e2e` | End-to-end tests (Playwright; needs the test stack, see [SETUP §6](docs/SETUP.md#6-testing)) |
-| `npm run db:up` / `db:down` / `db:status` | Apply, roll back or list database migrations (`DATABASE_URL`) |
+| `npm run test:e2e` | End-to-end tests (Playwright, against the local stack; see [SETUP §6](docs/SETUP.md#6-testing)) |
+| `npm run db:new` / `db:up` / `db:down` / `db:status` | Create, apply, roll back or list migrations on your local database |
 | `npm run db:test` | Prove every migration reverses cleanly, then run the RLS checks |
 | `npm run import:lebu-form` | Import members from the lebu-form register |
 
