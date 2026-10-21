@@ -67,31 +67,14 @@ jobs:
     name: End-to-end (Playwright)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
-      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
-      STACK: docker compose -f e2e/stack/docker-compose.yml
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - name: Start Postgres and GoTrue
-        run: $STACK up -d --wait db auth
-      - name: Migrate the test database
-        run: npm run db:up
-      - name: Start PostgREST and the API gateway
-        run: |
-          $STACK up -d rest
-          nohup node e2e/stack/gateway.mjs > gateway.log 2>&1 &
-          for _ in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:54321/rest/v1/ || true)
-            [ "$code" = 200 ] || [ "$code" = 401 ] && break
-            sleep 1
-          done
-          node e2e/stack/keys.mjs >> "$GITHUB_ENV"
-      - name: Seed one user per role
-        run: npm run e2e:seed
+      - name: Local Supabase stack, migrations and test data (the script developers use)
+        # also writes the stack's URL and test keys to $GITHUB_ENV for the steps below
+        run: npm run local:start
       - name: Build
         run: npm run build
       - name: Install Chromium
@@ -101,7 +84,9 @@ jobs:
       - name: Stack logs
         if: failure()
         run: |
-          $STACK logs --no-color > stack.log 2>&1 || true
+          for c in $(docker ps -a --format '{{.Names}}' | grep '_lkhc$'); do
+            { echo "===== $c"; docker logs --tail 300 "$c" 2>&1; } >> stack.log
+          done
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -110,5 +95,4 @@ jobs:
             playwright-report/
             test-results/
             stack.log
-            gateway.log
           retention-days: 7

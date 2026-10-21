@@ -70,7 +70,7 @@ function toInput(m) {
 // an invalid optional field is dropped (and reported) rather than losing the whole member.
 const required = new Set(FIELDS.filter((f) => f.req).map((f) => f.k))
 function validate(m) {
-  let input = toInput(m)
+  const input = toInput(m)
   let result = registrationSchema.safeParse(input)
   const dropped = []
   if (!result.success) {
