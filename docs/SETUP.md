@@ -179,7 +179,13 @@ Until the ruleset file arrives (ENGINEERING.md step 3): GitHub → **Settings �
 
 ### Dependabot and overrides
 
-Dependabot waits 14 days after each release before proposing it. The `overrides` in `package.json` hold back three packages of the test tooling (`rolldown`, `tinybench`, and `postcss` inside `vite`) that were only days old when it was added. When a Dependabot PR for `vite` or `vitest` conflicts with them, delete the overrides in that PR.
+[Dependabot](../.github/dependabot.yml) is GitHub's update robot. It proposes newer versions of the packages the app is built on as pull requests; CI tests each one, and nothing merges unless you merge it.
+- **npm packages:** at most one combined PR a week for minor and patch updates, plus one for major updates (read their release notes before merging).
+- **GitHub Actions steps:** at most one combined PR a month.
+- **Cooldown:** a release must be at least 14 days old before it's proposed.
+- **Security fixes:** for known vulnerabilities these come separately and straight away, once **Settings → Code security → Dependabot security updates** is on.
+
+The `overrides` in `package.json` hold back two packages of the test tooling (`rolldown` and `tinybench`) to releases at least two weeks old. If a Dependabot PR for `vite` or `vitest` conflicts with them, delete the conflicting override in that PR.
 
 ## 8. Keep-warm ping
 

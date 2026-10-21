@@ -325,7 +325,7 @@ Severity: **C** = Critical, **H** = High, **M** = Medium, **L** = Low. Status on
 | F-37 | H | Ops | One Supabase project for dev, demo and prod; demo data in prod; undocumented deploy | live data | ⬜ 1.1, 0.1 |
 | F-38 | M | Ops | No monitoring, security headers or rate limiting | `next.config.ts` | ✅ headers (1.8) / ⬜ rate limits, monitoring 3.7 |
 | F-39 | C | Ops | No backups or DR; production project was paused/deleted unnoticed (2026-10-16) | DNS NXDOMAIN observed | ✅ keep-warm ping (0.6) / ⬜ 0.2, 0.6 plan, 3.8 |
-| F-40 | L | Hygiene | About 17 GB of `.wav` files in the repo root; 34 unused deps; unused fonts; 2 mega-commits | repo | ✅ `.gitignore` / ⬜ 3.9 |
+| F-40 | L | Hygiene | About 17 GB of `.wav` files in the repo root; 34 unused deps; unused fonts; 2 mega-commits | repo | ✅ `.gitignore`, unused dependencies removed / ⬜ 3.9 fonts and folders |
 | F-41 | H | Privacy | Sensitive personal data (IDs, income, counselling, children) with no privacy policy, consent or retention rules | PRD, registration spec | ⬜ 3.10 |
 
 **Totals:** 7 Critical · 19 High · 12 Medium · 3 Low (41).
