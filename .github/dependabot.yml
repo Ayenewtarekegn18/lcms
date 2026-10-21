@@ -1,20 +1,33 @@
-# Weekly update PRs. The cooldown leaves new releases alone for two weeks, so a compromised or
-# broken release has time to be noticed before it reaches this project.
+# Dependabot proposes dependency updates as pull requests; nothing merges without you, and CI tests each one.
+# Kept quiet on purpose:
+#   npm packages     at most one PR a week for minor and patch updates (grouped),
+#                    and one for major updates, which need a closer look
+#   GitHub Actions   at most one PR a month (grouped)
+# Cooldown: a release must be at least 14 days old before it's proposed, so a broken or compromised
+# release has time to be noticed first. Security fixes for known vulnerabilities are separate
+# (Settings → Code security → Dependabot security updates) and arrive as soon as they're published.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Africa/Addis_Ababa }
     cooldown: { default-days: 14 }
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    commit-message: { prefix: "chore(deps)" }
     groups:
-      development:
-        dependency-type: development
+      npm-minor-and-patch:
+        patterns: ["*"]
         update-types: [minor, patch]
-      production-patches:
-        dependency-type: production
-        update-types: [patch]
+      npm-major:
+        patterns: ["*"]
+        update-types: [major]
+
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: monthly, time: "06:00", timezone: Africa/Addis_Ababa }
     cooldown: { default-days: 14 }
+    open-pull-requests-limit: 1
+    commit-message: { prefix: "ci(deps)" }
+    groups:
+      github-actions:
+        patterns: ["*"]
