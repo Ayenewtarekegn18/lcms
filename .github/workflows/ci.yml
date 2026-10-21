@@ -87,7 +87,7 @@ jobs:
           for c in $(docker ps -a --format '{{.Names}}' | grep '_lkhc$'); do
             { echo "===== $c"; docker logs --tail 300 "$c" 2>&1; } >> stack.log
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-report
