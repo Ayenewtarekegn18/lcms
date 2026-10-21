@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx tsc --noEmit
@@ -51,7 +51,7 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Use psql and pg_dump from the service container (client always matches the server)
@@ -69,7 +69,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Local Supabase stack, migrations and test data (the script developers use)
