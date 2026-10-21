@@ -693,7 +693,7 @@ Daily backups (plus PITR on production); a weekly `pg_dump` of production to off
 **Fixes:** F-40 · **Effort:** 0.5–1 day
 
 - Move the `.wav` recordings out of the project folder (already git-ignored by this change).
-- Delete `Fredoka/` (28 unused font files, committed), `public/fonts/`, the empty `project/` folder, and the 34 unused dependencies.
+- Delete `Fredoka/` (28 unused font files, committed), `public/fonts/` and the empty `project/` folder. (The unused dependencies are done: 31 packages nothing imported were removed on 2026-10-21.)
 - Clear the 114 ESLint warnings.
 
 ### 3.10 Privacy and data protection
