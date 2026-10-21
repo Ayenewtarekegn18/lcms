@@ -672,7 +672,7 @@ Give the 19 icon-only buttons an `aria-label`, link every `<Label>` to its input
 | Database | Every migration up, down and up again with an identical schema; security migrations refuse to roll back; [`verify_security.sql`](../db/tests/verify_security.sql) (24 access checks) | `npm run db:test` |
 | End-to-end (Playwright) | Every gated page for every role; registration flow (validation messages, conditional fields, child rows, saved record and number); privilege escalation, anon access, audit-log forgery; keep-warm; desktop and phone smoke | `npm run test:e2e` |
 
-[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs all three on every pull request against a throwaway stack ([`e2e/stack`](../e2e/stack/): Postgres 17, GoTrue, PostgREST; test-only keys generated per run), then on `main` checks the production database is adopted, runs `npm run db:up` on it and deploys to Vercel. Setup: [SETUP.md §7](SETUP.md#7-cicd).
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs all three on every pull request. The end-to-end tests use the local Supabase stack (`npm run local:start`, the same script developers use), with test-only keys. After CI passes, [`deploy.yml`](../.github/workflows/deploy.yml) migrates and deploys staging, and production on a release ([ENGINEERING.md](ENGINEERING.md)). Setup: [SETUP.md §7](SETUP.md#7-cicd).
 
 Still to do:
 - **Branch protection:** `main` requires the three CI checks (Types…, Migrations…, End-to-end) and one review. Use small PRs, not mega-commits.

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { PAGE_ACCESS } from '../../lib/auth/roles'
-import { E2E_USERS, type E2ERole } from '../users'
+import { TEST_USERS, type TestRole } from '../users'
 import { authFile } from '../helpers'
 
 // Every gated section, checked for every role against PAGE_ACCESS (the server-side layout gates).
@@ -24,7 +24,7 @@ test('signed-out visitors are sent to the login page', async ({ page }) => {
   }
 })
 
-for (const role of Object.keys(E2E_USERS) as E2ERole[]) {
+for (const role of Object.keys(TEST_USERS) as TestRole[]) {
   test.describe(`as ${role}`, () => {
     test.use({ storageState: authFile(role) })
 

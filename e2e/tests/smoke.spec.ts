@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { authFile } from '../helpers'
+import { TEST_USERS } from '../users'
 
 // Runs on desktop and on a phone viewport (playwright.config.ts → projects).
 const noHorizontalScroll = () => document.documentElement.scrollWidth <= window.innerWidth + 1
@@ -13,7 +14,7 @@ test('login page renders and fits the screen', async ({ page }) => {
 
 test('wrong password shows an error and stays on the login page', async ({ page }) => {
   await page.goto('/auth/login')
-  await page.locator('#email').fill('member@e2e.test')
+  await page.locator('#email').fill(TEST_USERS.member.email)
   await page.locator('#password').fill('not-the-password')
   await page.locator('form button[type="submit"]').click()
   await expect(page.getByText('Invalid email or password. Please try again.')).toBeVisible()
