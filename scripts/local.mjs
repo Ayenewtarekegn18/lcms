@@ -27,7 +27,10 @@ function run(cmd, args, { capture = false } = {}) {
   if (r.error) fail(`${cmd} could not run: ${r.error.message}`)
   if (r.status !== 0) {
     if (capture) process.stderr.write(r.stderr || r.stdout || '')
-    fail(`${cmd} ${args.join(' ')} failed (exit ${r.status})`)
+    const hint = args[1] === 'start'
+      ? '\n  If the lines above say "failed to resolve reference" or time out, a Docker image download was\n  interrupted: check the internet connection and run it again (finished downloads are kept).'
+      : ''
+    fail(`${cmd} ${args.join(' ')} failed (exit ${r.status})${hint}`)
   }
   return r.stdout ?? ''
 }
