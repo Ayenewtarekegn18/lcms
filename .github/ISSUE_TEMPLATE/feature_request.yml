@@ -1,0 +1,25 @@
+name: Feature request
+description: Something the app should do that it doesn't yet
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Who runs into it (which role), and what do they have to do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should happen?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: How will we know it's done?
+      description: Acceptance criteria, one per line.
+      placeholder: |
+        - An admin can …
+        - A member sees …
