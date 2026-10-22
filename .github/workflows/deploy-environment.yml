@@ -2,7 +2,10 @@
 #   1. the database must already be under dbmate (an older hand-built database is adopted once)
 #   2. apply pending migrations          (environment secret DATABASE_URL)
 #   3. staging only: run the RLS checks against the migrated database
-#   4. build and deploy the app to Vercel (secret VERCEL_TOKEN, variables VERCEL_ORG_ID / VERCEL_PROJECT_ID)
+#   4. Supabase settings: compare supabase/config.toml with the project, then apply it once the
+#      environment variable SUPABASE_CONFIG_PUSH is "true" (secret SUPABASE_ACCESS_TOKEN, variable
+#      SUPABASE_PROJECT_REF)
+#   5. build and deploy the app to Vercel (secret VERCEL_TOKEN, variables VERCEL_ORG_ID / VERCEL_PROJECT_ID)
 # Each part is skipped, with a notice, until its settings exist (docs/SETUP.md §7).
 # Migrations run before the new app goes live, so every migration must keep the previous release
 # working (docs/ENGINEERING.md → Database changes).
@@ -34,6 +37,8 @@ jobs:
       cancel-in-progress: false
     env:
       DATABASE_URL_SECRET: ${{ secrets.DATABASE_URL }}   # cleaned into DATABASE_URL by the first step
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
@@ -86,6 +91,28 @@ jobs:
           docker run --rm -i postgres:17.5 psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 \
             < db/tests/verify_security.sql 2>&1 | sed -n '/verify_security/,$p'
 
+      - name: "Supabase settings: differences from supabase/config.toml"
+        if: env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_PROJECT_REF != ''
+        run: |
+          set +e
+          out=$(npx supabase config diff --project-ref "$SUPABASE_PROJECT_REF" --exit-code 2>&1)
+          code=$?
+          set -e
+          {
+            echo "### ${{ inputs.environment }} Supabase settings"
+            case $code in
+              0) echo "Same as supabase/config.toml." ;;
+              2) echo "Differences (left: the project now; right: supabase/config.toml):" ;;
+              *) echo "Could not compare (exit $code):" ;;
+            esac
+            [ "$code" = 0 ] || { echo '```'; echo "$out" | grep -vE 'new version of Supabase CLI|We recommend updating' || true; echo '```'; }
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$code" = 0 ] || [ "$code" = 2 ]
+
+      - name: "Supabase settings: apply supabase/config.toml"
+        if: env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_PROJECT_REF != '' && vars.SUPABASE_CONFIG_PUSH == 'true'
+        run: npx supabase config push --project-ref "$SUPABASE_PROJECT_REF" --yes
+
       - name: "App: build and deploy to Vercel"
         id: app
         if: env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
@@ -109,3 +136,8 @@ jobs:
         run: |
           [ -n "$DATABASE_URL" ] || echo "::notice::No DATABASE_URL secret in the '${{ inputs.environment }}' environment: database not migrated (docs/SETUP.md §7)"
           [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ] || echo "::notice::Vercel is not configured: app not deployed (docs/SETUP.md §7)"
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_PROJECT_REF" ]; then
+            echo "::notice::No SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_REF for '${{ inputs.environment }}': Supabase settings not compared (docs/SETUP.md §7)"
+          elif [ "${{ vars.SUPABASE_CONFIG_PUSH }}" != true ]; then
+            echo "::notice::Supabase settings were compared but not applied: set the variable SUPABASE_CONFIG_PUSH=true in the '${{ inputs.environment }}' environment once the comparison looks right"
+          fi

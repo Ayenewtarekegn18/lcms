@@ -78,9 +78,7 @@ The schema lives in [`db/migrations/`](../db/migrations/) as **dbmate** migratio
 
 The old `scripts/*.sql` files are archived in `scripts/legacy/` and must not be run. Use [DEMO_SETUP.md](DEMO_SETUP.md) for demo data.
 
-Then, in the dashboard:
-- **Authentication → Sign In / Providers:** Email enabled. Turn **off** "Allow new users to sign up" for any project with real data (invite users instead).
-- **Authentication → URL Configuration:** Site URL `http://localhost:3000` (development) or the deployed URL; add both to Redirect URLs.
+Supabase's own settings (sign-ups off, password rules, site URL, upload limit) live in [`supabase/config.toml`](../supabase/config.toml), not in the dashboard. The local stack uses them, and the Deploy workflow applies them to staging and production (§7).
 
 ## 4. Run
 
@@ -149,9 +147,21 @@ The current Supabase project is staging.
 2. **Add environment secret** `DATABASE_URL`: the session-pooler connection string (Supabase → Connect → Session pooler, with your database password and `?sslmode=require`). It's the same value you have in `.env.local` today. After this, remove that line from `.env.local` or point it at a local database. Staging is now changed only by the pipeline.
 3. **Actions → Deploy → Run workflow**, environment `staging`, ref `main`. The run should show `Pending: 0` and `verify_security: all 24 checks passed`.
 
+### Staging Supabase settings
+
+The Deploy workflow compares [`supabase/config.toml`](../supabase/config.toml) with the staging project after each merge, and applies it once you've switched that on. Settings not listed in the file are never touched.
+1. [supabase.com](https://supabase.com) → your avatar → **Account preferences → Access Tokens → Generate new token**. Name it `github-actions-lkhc` and give it an expiry, for example one year (put a reminder in your calendar to renew it).
+2. GitHub → **Settings → Environments → staging**:
+   - secret `SUPABASE_ACCESS_TOKEN`: the token;
+   - variable `SUPABASE_PROJECT_REF`: the 20-letter project id, the part before `.supabase.co` in the project URL. It's already in `[remotes.staging]`.
+3. **Actions → Deploy → Run workflow** (`staging`, `main`). The run summary's **staging Supabase settings** section lists every difference between the project and the file.
+4. If the differences are what you want (for example sign-ups switching off), add the variable `SUPABASE_CONFIG_PUSH` = `true` to the `staging` environment and run Deploy again. From then on every deploy applies the file, and a change made by hand in the dashboard is undone at the next deploy. Change settings in `config.toml`, in a PR.
+
+The token can manage every project in your Supabase account, so it lives only in GitHub's environment secrets. Revoke it in Supabase if it ever leaks.
+
 ### App hosting (Vercel)
 
-1. In Supabase, turn off **"Allow new users to sign up"** (Authentication → Sign In / Providers) **before** the app is reachable online.
+1. Make sure sign-ups are off **before** the app is reachable online. "Staging Supabase settings" above does that, or switch off "Allow new users to sign up" under Authentication → Sign In / Providers.
 2. [vercel.com](https://vercel.com) → **Continue with GitHub** → **Add New… → Project** → import `lcms`. Under **Environment Variables**, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` with the staging values from `.env.local`.
    - The Git connection gives every pull request its own preview site.
    - `vercel.json` stops Vercel deploying `main` by itself; the pipeline does that after migrating. The deployment Vercel makes when you first import can be ignored.
@@ -164,11 +174,15 @@ Preview sites, staging included, are visible only to people signed in to your Ve
 
 ### Production (at go-live)
 
-1. Create a **new** Supabase project on a paid plan, for daily backups and no pausing. Turn off sign-ups, and set the Site URL to the production domain.
-2. GitHub environment `production`: secret `DATABASE_URL` (its session pooler), and **Required reviewers**: you.
-3. Vercel → project → **Settings → Environment Variables**: give **Production** the new project's URL and anon key.
-4. Publish a GitHub release `v1.0.0` (Releases → Draft a new release → new tag). CI runs on the tag, then Deploy waits for your approval. It builds the whole schema on the empty database and deploys the app.
-5. Create the first admin: invite yourself (Authentication → Users → Invite), sign in once, then run the `UPDATE public.profiles SET role = 'admin' …` from §4 in the SQL editor. This is the only SQL anyone runs by hand, once per new project.
+1. Create a **new** Supabase project on a paid plan, for daily backups and no pausing.
+2. In a PR, add a `[remotes.production]` block to `supabase/config.toml`: its `project_id`, and `[remotes.production.auth]` with the production domain as `site_url`. Copy the staging block. The pipeline then turns off sign-ups and sets the password rules for it.
+3. GitHub environment `production`:
+   - secrets `DATABASE_URL` (its session pooler) and `SUPABASE_ACCESS_TOKEN`;
+   - variables `SUPABASE_PROJECT_REF` and `SUPABASE_CONFIG_PUSH` = `true`;
+   - **Required reviewers**: you.
+4. Vercel → project → **Settings → Environment Variables**: give **Production** the new project's URL and anon key.
+5. Publish a GitHub release `v1.0.0` (Releases → Draft a new release → new tag). CI runs on the tag, then Deploy waits for your approval. It builds the whole schema on the empty database and deploys the app.
+6. Create the first admin: invite yourself (Authentication → Users → Invite), sign in once, then run the `UPDATE public.profiles SET role = 'admin' …` from §4 in the SQL editor. This is the only SQL anyone runs by hand, once per new project.
 
 ### Branch protection
 

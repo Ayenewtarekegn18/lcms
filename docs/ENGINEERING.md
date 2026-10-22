@@ -71,12 +71,20 @@ Rules:
 - **App rollback:** in Vercel, promote or roll back to the previous production deployment, or run **Actions → Deploy → Run workflow** with an earlier tag. Production still waits for approval. Because migrations are backward compatible, the older app works on the newer schema.
 - **Database rollback:** fix forward with a new migration. If data was lost, restore from a backup. Production uses Supabase daily backups (paid plan); add point-in-time recovery once it holds real data.
 
+## Supabase settings
+
+Supabase's settings are code too. [`supabase/config.toml`](../supabase/config.toml) lists the ones we choose:
+- sign-ups off (invitation only), password rules, site URL and redirect URLs, upload size;
+- values that differ per project, in `[remotes.staging]` (and later `[remotes.production]`).
+
+The local stack uses the file. After migrating, the Deploy workflow compares it with the project (`supabase config diff`) and, once `SUPABASE_CONFIG_PUSH` is on for that environment, applies it (`supabase config push`). Only the settings listed in the file are written, and anything else is left alone. **Change these settings in a PR, not in the dashboard:** the next deploy would undo a dashboard change.
+
 ## Secrets and configuration
 
 | Where | What |
 |---|---|
-| GitHub environment `staging` | `DATABASE_URL`: the staging session-pooler connection string |
-| GitHub environment `production` | `DATABASE_URL` for production, and you as **required reviewer** |
+| GitHub environment `staging` | Secrets `DATABASE_URL` (the staging session-pooler connection string) and `SUPABASE_ACCESS_TOKEN`. Variables `SUPABASE_PROJECT_REF` and `SUPABASE_CONFIG_PUSH` |
+| GitHub environment `production` | The same, for production, plus you as **required reviewer** |
 | GitHub repository secrets | `VERCEL_TOKEN`, plus `SUPABASE_URL` and `SUPABASE_ANON_KEY` for the keep-warm ping |
 | GitHub repository variables | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `APP_URL` |
 | Vercel project | `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, per environment: Preview → staging, Production → production |
@@ -100,7 +108,7 @@ A change is done when:
 |---|---|---|
 | 1 | Environments and automatic deploys (this guide, `deploy.yml`) | ✅ |
 | 2a | Local development on the Supabase CLI (local Auth, Storage, Studio, Mailpit, test logins and sample data); CI's end-to-end tests use the same stack | ✅ |
-| 2b | Supabase settings (sign-ups, URLs, password rules) as code, applied to staging and production by the pipeline | ⬜ |
+| 2b | Supabase settings (sign-ups, URLs, password rules) as code, compared and applied by the Deploy workflow | ✅ |
 | 3 | Repository rules as code (branch ruleset, PR and issue templates, CODEOWNERS), automated releases and changelog, CodeQL | ⬜ |
 | 4 | Code structure: feature modules, a server-side data layer, database types generated from the schema and checked in CI | ⬜ |
 | 5 | Features on that foundation: Phase 2 and the Frontend & UI track; monitoring and alerting before go-live | ⬜ |
