@@ -1,0 +1,17 @@
+# Sections of the automatic release notes (Releases → Draft a new release → Generate release notes).
+changelog:
+  exclude:
+    labels: [skip-changelog]
+  categories:
+    - title: New features
+      labels: [feature, enhancement]
+    - title: Fixes
+      labels: [fix, bug]
+    - title: Database and Supabase
+      labels: [database]
+    - title: Dependencies
+      labels: [dependencies]
+    - title: Pipeline and docs
+      labels: [ci, documentation]
+    - title: Other changes
+      labels: ["*"]

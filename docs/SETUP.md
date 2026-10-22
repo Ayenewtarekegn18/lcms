@@ -184,12 +184,32 @@ Preview sites, staging included, are visible only to people signed in to your Ve
 5. Publish a GitHub release `v1.0.0` (Releases → Draft a new release → new tag). CI runs on the tag, then Deploy waits for your approval. It builds the whole schema on the empty database and deploys the app.
 6. Create the first admin: invite yourself (Authentication → Users → Invite), sign in once, then run the `UPDATE public.profiles SET role = 'admin' …` from §4 in the SQL editor. This is the only SQL anyone runs by hand, once per new project.
 
-### Branch protection
+### Protect `main` (once)
 
-Until the ruleset file arrives (ENGINEERING.md step 3): GitHub → **Settings → Rules → Rulesets → New branch ruleset** for `main`:
-- require a pull request (0 approvals while you work alone);
-- require the three CI checks: **Types, lint, unit tests, audit**, **Migrations (up/down round trip) and RLS checks** and **End-to-end (Playwright)**;
-- block force pushes and deletion.
+The rules for `main` are in [`.github/rulesets/main.json`](../.github/rulesets/main.json):
+- every change comes through a PR;
+- the three CI checks must pass and the branch must be up to date with `main`;
+- review threads are resolved;
+- merges are squash-only;
+- no force pushes or deletion;
+- an admin may bypass the rules for an emergency fix, visibly in the PR.
+
+To apply them:
+1. Download the file: open it on GitHub → **Download raw file**.
+2. GitHub → **Settings → Rules → Rulesets → New ruleset → Import a ruleset**, choose the file, then **Create**.
+3. **Settings → General → Pull Requests:** tick only **Allow squash merging**, set its default message to **Pull request title and description**, and tick **Automatically delete head branches**.
+
+### Security settings (once)
+
+GitHub → **Settings → Code security**:
+- **Private vulnerability reporting: Enable.** People can then report problems privately ([SECURITY.md](../SECURITY.md)).
+- **Dependabot security updates: Enable.**
+- **Secret scanning** and **Push protection: Enable.** They're free for public repositories, and block a push that contains a key.
+- **Code scanning:** leave "Default setup" off. CodeQL runs from [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml), and its results appear under **Security → Code scanning**.
+
+### Releases
+
+Releases → **Draft a new release** → choose a new tag (`v0.3.0`) on `main` → **Generate release notes**. They're grouped by the labels PRs receive automatically. Then **Publish**. CI runs on the tag, then the production deploy waits for your approval (once production exists; see above).
 
 ### Dependabot and overrides
 

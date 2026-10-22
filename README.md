@@ -50,4 +50,4 @@ Building the database for a new Supabase project, creating the first admin and d
 
 ## Security
 
-Never commit `.env.local`. The Supabase **service-role key** bypasses all security: keep it out of the browser and out of Vercel. Report security issues privately to the maintainers, not in public issues.
+Never commit `.env.local`. The Supabase **service-role key** bypasses all security: keep it out of the browser and out of Vercel. Report security problems privately, not in public issues: see [SECURITY.md](SECURITY.md). Contributing: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).

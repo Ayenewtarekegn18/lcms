@@ -1,0 +1,17 @@
+# Labels for pull requests (.github/workflows/labeler.yml), by branch name and changed files.
+# The release notes group changes by these labels (.github/release.yml).
+feature:
+  - head-branch: ['^feat/']
+fix:
+  - head-branch: ['^fix/']
+database:
+  - changed-files:
+      - any-glob-to-any-file: ['db/**', 'supabase/**']
+ci:
+  - head-branch: ['^ci/']
+  - changed-files:
+      - any-glob-to-any-file: ['.github/**']
+documentation:
+  - head-branch: ['^docs/']
+  - changed-files:
+      - any-glob-to-all-files: ['docs/**', '*.md', '**/*.md']
