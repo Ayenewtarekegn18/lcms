@@ -33,7 +33,7 @@ branch ──► pull request ──► CI ──► merge to main ──► Dep
 1. **Branch** from `main`: `feat/…`, `fix/…`, `docs/…`, `ci/…`, `chore/…`. Keep branches short-lived: days, not weeks.
 2. **Commit** using [Conventional Commits](https://www.conventionalcommits.org), for example `feat(members): print ID cards`. The type drives the version number and the changelog.
 3. **Open a pull request** early. The description says what changed, why, how it was tested, and anything a deploy needs.
-4. **Merge** when CI is green. **Squash and merge**, so `main` gets one commit per PR titled with its Conventional Commit.
+4. **Merge** when CI is green. **Squash and merge** (the only method `main` allows), so `main` gets one commit per PR, titled with its Conventional Commit.
 5. **Staging deploys by itself.** The Deploy workflow applies the migrations, runs the RLS checks against staging and deploys the app. Check the change on staging.
 6. **Release to production.** Publish a GitHub release (`vX.Y.Z`). CI runs again on the tag, then the production deploy waits for your approval in the Actions tab.
 
@@ -61,13 +61,16 @@ Rules:
 ## Pull requests
 
 - **One purpose, small enough to review in one sitting.** Aim for under about 400 changed lines; split refactors from behaviour changes.
-- **Required before merging: CI green.** No approving review is required while there is one developer; add it when the team grows.
+- **Title:** Conventional Commits, for example `fix(financial): totals in ETB`. **Description:** the PR template (what and why, how it was tested, deploy notes, checklist).
+- **Required before merging,** enforced by the `main` ruleset ([`.github/rulesets/main.json`](../.github/rulesets/main.json)): the three CI checks are green, the branch is up to date with `main`, and review threads are resolved. No approving review is required while there is one developer; raise `required_approving_review_count` when the team grows. An admin may bypass the rules for an emergency fix, but it shows in the PR.
+- **Labels** come automatically from the branch name and changed files ([`.github/labeler.yml`](../.github/labeler.yml)), and the release notes are grouped by them.
 - **A bug fix includes the test that would have caught it.**
 - **Update the docs in the same PR when you change behaviour or setup**, for example [STATUS.md](STATUS.md) for a module or [SETUP.md](SETUP.md) for setup.
 
 ## Releases and rollback
 
-- **Versions** follow [semantic versioning](https://semver.org): `vMAJOR.MINOR.PATCH`. Release notes list the user-visible changes and the migrations included.
+- **Versions** follow [semantic versioning](https://semver.org): `vMAJOR.MINOR.PATCH`.
+- **To release:** Releases → **Draft a new release** → new tag (for example `v0.3.0`) on `main` → **Generate release notes**. GitHub groups them by label ([`.github/release.yml`](../.github/release.yml)). Add a line for any migration or setting the release brings, then **Publish**. CI runs on the tag, and the production deploy waits for your approval.
 - **App rollback:** in Vercel, promote or roll back to the previous production deployment, or run **Actions → Deploy → Run workflow** with an earlier tag. Production still waits for approval. Because migrations are backward compatible, the older app works on the newer schema.
 - **Database rollback:** fix forward with a new migration. If data was lost, restore from a backup. Production uses Supabase daily backups (paid plan); add point-in-time recovery once it holds real data.
 
@@ -90,6 +93,12 @@ The local stack uses the file. After migrating, the Deploy workflow compares it 
 | Vercel project | `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, per environment: Preview → staging, Production → production |
 | `.env.local` (git-ignored) | Local development values only |
 
+**Security tooling:**
+- [CodeQL](../.github/workflows/codeql.yml) scans the code and the workflows on every PR and every week.
+- [Dependabot](../.github/dependabot.yml) proposes updates.
+- Every GitHub Action is pinned to the exact commit of a release at least two weeks old (`@<sha> # vX.Y.Z`), so a moved tag can't change what runs.
+- Vulnerabilities are reported privately ([SECURITY.md](../SECURITY.md)).
+
 **Never commit secrets, and never paste them into issues, PRs or chats.** The service-role key and database passwords bypass all security. If one leaks, rotate it in Supabase straight away.
 
 ## Definition of done
@@ -109,6 +118,6 @@ A change is done when:
 | 1 | Environments and automatic deploys (this guide, `deploy.yml`) | ✅ |
 | 2a | Local development on the Supabase CLI (local Auth, Storage, Studio, Mailpit, test logins and sample data); CI's end-to-end tests use the same stack | ✅ |
 | 2b | Supabase settings (sign-ups, URLs, password rules) as code, compared and applied by the Deploy workflow | ✅ |
-| 3 | Repository rules as code (branch ruleset, PR and issue templates, CODEOWNERS), automated releases and changelog, CodeQL | ⬜ |
+| 3 | Repository rules as code: the `main` ruleset, PR and issue templates, CODEOWNERS, automatic labels and release notes, CodeQL, the security policy, pinned actions | ✅ |
 | 4 | Code structure: feature modules, a server-side data layer, database types generated from the schema and checked in CI | ⬜ |
 | 5 | Features on that foundation: Phase 2 and the Frontend & UI track; monitoring and alerting before go-live | ⬜ |
