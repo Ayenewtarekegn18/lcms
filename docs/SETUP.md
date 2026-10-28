@@ -150,14 +150,18 @@ The current Supabase project is staging.
 ### Staging Supabase settings
 
 The Deploy workflow compares [`supabase/config.toml`](../supabase/config.toml) with the staging project after each merge, and applies it once you've switched that on. Settings not listed in the file are never touched.
-1. [supabase.com](https://supabase.com) → your avatar → **Account preferences → Access Tokens → Generate new token**. Name it `github-actions-lkhc` and give it an expiry, for example one year (put a reminder in your calendar to renew it).
+1. [supabase.com](https://supabase.com) → your avatar → **Account preferences → Access Tokens → Generate new token**:
+   - **name** `github-actions-lkhc`;
+   - **resource access:** only the staging project;
+   - **expiry:** one year (put a reminder in your calendar to renew it);
+   - **capabilities:** **Auth Config: read-write** and **Storage: read-write**, nothing else (Project Settings: read is harmless if you've already added it).
 2. GitHub → **Settings → Environments → staging**:
    - secret `SUPABASE_ACCESS_TOKEN`: the token;
    - variable `SUPABASE_PROJECT_REF`: the 20-letter project id, the part before `.supabase.co` in the project URL. It's already in `[remotes.staging]`.
 3. **Actions → Deploy → Run workflow** (`staging`, `main`). The run summary's **staging Supabase settings** section lists every difference between the project and the file.
 4. If the differences are what you want (for example sign-ups switching off), add the variable `SUPABASE_CONFIG_PUSH` = `true` to the `staging` environment and run Deploy again. From then on every deploy applies the file, and a change made by hand in the dashboard is undone at the next deploy. Change settings in `config.toml`, in a PR.
 
-The token can manage every project in your Supabase account, so it lives only in GitHub's environment secrets. Revoke it in Supabase if it ever leaks.
+The token can change only the login and storage settings of that one project, and can't read any data. It still belongs only in GitHub's environment secrets. Revoke it in Supabase if it ever leaks.
 
 ### App hosting (Vercel)
 

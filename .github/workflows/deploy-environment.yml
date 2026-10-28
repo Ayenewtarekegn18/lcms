@@ -2,9 +2,10 @@
 #   1. the database must already be under dbmate (an older hand-built database is adopted once)
 #   2. apply pending migrations          (environment secret DATABASE_URL)
 #   3. staging only: run the RLS checks against the migrated database
-#   4. Supabase settings: compare supabase/config.toml with the project, then apply it once the
-#      environment variable SUPABASE_CONFIG_PUSH is "true" (secret SUPABASE_ACCESS_TOKEN, variable
-#      SUPABASE_PROJECT_REF)
+#   4. Supabase settings: compare the Auth and Storage settings in supabase/config.toml with the
+#      project (scripts/supabase-settings.mjs), then apply them once the environment variable
+#      SUPABASE_CONFIG_PUSH is "true" (secret SUPABASE_ACCESS_TOKEN with Auth and Storage read-write,
+#      variable SUPABASE_PROJECT_REF)
 #   5. build and deploy the app to Vercel (secret VERCEL_TOKEN, variables VERCEL_ORG_ID / VERCEL_PROJECT_ID)
 # Each part is skipped, with a notice, until its settings exist (docs/SETUP.md §7).
 # Migrations run before the new app goes live, so every migration must keep the previous release
@@ -95,23 +96,19 @@ jobs:
         if: env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_PROJECT_REF != ''
         run: |
           set +e
-          out=$(npx supabase config diff --project-ref "$SUPABASE_PROJECT_REF" --exit-code 2>&1)
+          out=$(node scripts/supabase-settings.mjs diff 2>&1)
           code=$?
           set -e
           {
             echo "### ${{ inputs.environment }} Supabase settings"
-            case $code in
-              0) echo "Same as supabase/config.toml." ;;
-              2) echo "Differences (left: the project now; right: supabase/config.toml):" ;;
-              *) echo "Could not compare (exit $code):" ;;
-            esac
-            [ "$code" = 0 ] || { echo '```'; echo "$out" | grep -vE 'new version of Supabase CLI|We recommend updating' || true; echo '```'; }
+            [ "$code" = 0 ] || [ "$code" = 2 ] || echo "Could not compare (exit $code):"
+            echo '```'; echo "$out"; echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
           [ "$code" = 0 ] || [ "$code" = 2 ]
 
       - name: "Supabase settings: apply supabase/config.toml"
         if: env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_PROJECT_REF != '' && vars.SUPABASE_CONFIG_PUSH == 'true'
-        run: npx supabase config push --project-ref "$SUPABASE_PROJECT_REF" --yes
+        run: node scripts/supabase-settings.mjs apply | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: "App: build and deploy to Vercel"
         id: app

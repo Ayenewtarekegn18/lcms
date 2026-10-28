@@ -1,8 +1,9 @@
 # Supabase settings for LKHC, kept in the repo instead of being clicked in the dashboard.
 #   local     npm run local:start uses everything below; anything not listed takes the CLI default
-#   staging   the Deploy workflow compares this file with the project (supabase config diff) and,
-#             once enabled, applies it (supabase config push). Only settings listed here are written;
-#             anything not listed is left as it is on Supabase. [remotes.*] holds per-project values.
+#   staging   the Deploy workflow compares the [auth] and [storage] settings with the project and,
+#             once enabled, applies them (scripts/supabase-settings.mjs). Only settings listed here are
+#             written; anything not listed is left as it is on Supabase. [remotes.*] holds per-project
+#             values. A new [auth]/[storage] setting also needs a line in that script's mapping.
 # Change a setting here, in a pull request, not in the dashboard: the next deploy would undo it.
 # docs/ENGINEERING.md → Supabase settings.
 project_id = "lkhc"
