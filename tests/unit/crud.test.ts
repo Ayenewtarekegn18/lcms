@@ -27,7 +27,7 @@ const { requireRole } = await import('@/lib/auth/guards')
 const ID = '00000000-0000-4000-8000-000000000001'
 const ctx = (id = ID) => ({ params: Promise.resolve({ id }) })
 const json = (body: unknown) => new Request('http://x', { method: 'PATCH', body: JSON.stringify(body) })
-const item = itemRoutes({ table: 'things', roles: ['admin'], update: z.object({ title: z.string() }).partial().strict() })
+const item = itemRoutes({ table: 'announcements', roles: ['admin'], update: z.object({ title: z.string() }).partial().strict() })
 
 beforeEach(() => { calls.length = 0; result = { data: null, error: null } })
 
@@ -36,7 +36,7 @@ describe('itemRoutes PATCH', () => {
     result = { data: { id: ID, title: 'new' }, error: null }
     const res = await item.PATCH(json({ title: 'new' }), ctx())
     expect(res.status).toBe(200)
-    expect(calls).toEqual(['from things', 'update {"title":"new"}', `eq id=${ID}`])
+    expect(calls).toEqual(['from announcements', 'update {"title":"new"}', `eq id=${ID}`])
   })
   it('rejects unknown keys such as role', async () => {
     const res = await item.PATCH(json({ title: 'x', role: 'admin' }), ctx())
@@ -71,7 +71,7 @@ describe('itemRoutes DELETE', () => {
   })
   it('soft-deletes when configured', async () => {
     result = { data: [{ id: ID }], error: null }
-    const soft = itemRoutes({ table: 'memberships', roles: ['admin'], update: z.object({}).strict(), softDelete: true })
+    const soft = itemRoutes({ table: 'ministry_members', roles: ['admin'], update: z.object({}).strict(), softDelete: true })
     await soft.DELETE(new Request('http://x'), ctx())
     expect(calls).toContain('update {"is_active":false}')
     expect(calls).not.toContain('delete')

@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "import:lebu-form": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-lebu-form.mjs"
+    "import:lebu-form": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-lebu-form.mjs",
+    "db:types": "supabase gen types typescript --local --schema public > lib/database.types.ts"
   },
   "engines": {
     "node": ">=22.18"
