@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { cleanSearch, opt, pageRange, parseId } from '@/lib/api/validation'
+import { MAX_JSON_BYTES, cleanSearch, opt, pageRange, parseBody, parseId, readJson } from '@/lib/api/validation'
 
 describe('cleanSearch', () => {
   it('drops PostgREST filter syntax and LIKE wildcards', () => {
@@ -43,5 +43,34 @@ describe('opt()', () => {
   })
   it('still validates real values', () => {
     expect(s.safeParse({ note: 'toolong' }).success).toBe(false)
+  })
+})
+
+describe('readJson / parseBody size limit', () => {
+  const post = (body: BodyInit, headers: Record<string, string> = {}) =>
+    new Request('http://x/api', { method: 'POST', body, headers: { 'content-type': 'application/json', ...headers } })
+  const schema = z.object({ items: z.array(z.string()).max(20) }).strict()
+
+  it('parses a normal body', async () => {
+    const r = await parseBody(post(JSON.stringify({ items: ['a'] })), schema)
+    expect(r.error).toBeNull()
+    expect(r.data).toEqual({ items: ['a'] })
+  })
+
+  it('refuses a body over the limit with 413, before parsing it', async () => {
+    const huge = JSON.stringify({ items: Array(20_000).fill('x'.repeat(10)) })
+    expect(huge.length).toBeGreaterThan(MAX_JSON_BYTES)
+    const r = await parseBody(post(huge), schema)
+    expect(r.error?.status).toBe(413)
+  })
+
+  it('refuses a declared oversized body without reading it', async () => {
+    const r = await readJson(post('{}', { 'content-length': String(MAX_JSON_BYTES + 1) }))
+    expect(r.tooLarge).toBe(true)
+  })
+
+  it('treats non-JSON as invalid (400), not as an error', async () => {
+    const r = await parseBody(post('not json'), schema)
+    expect(r.error?.status).toBe(400)
   })
 })

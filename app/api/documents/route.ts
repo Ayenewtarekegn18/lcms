@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     access_level: form?.get('access_level') || 'Staff Only',
   })
   if (!fields.success) {
-    return NextResponse.json({ error: 'Invalid request', issues: fields.error.flatten() }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', issues: z.flattenError(fields.error) }, { status: 400 })
   }
 
   // Storage key from the original file name, stripped to safe characters.
