@@ -80,7 +80,7 @@ Supabase's settings are code too. [`supabase/config.toml`](../supabase/config.to
 - sign-ups off (invitation only), password rules, site URL and redirect URLs, upload size;
 - values that differ per project, in `[remotes.staging]` (and later `[remotes.production]`).
 
-The local stack uses the file. After migrating, the Deploy workflow compares it with the project (`supabase config diff`) and, once `SUPABASE_CONFIG_PUSH` is on for that environment, applies it (`supabase config push`). Only the settings listed in the file are written, and anything else is left alone. **Change these settings in a PR, not in the dashboard:** the next deploy would undo a dashboard change.
+The local stack uses the file. After migrating, the Deploy workflow compares the file's Auth and Storage settings with the project and, once `SUPABASE_CONFIG_PUSH` is on for that environment, applies them ([`scripts/supabase-settings.mjs`](../scripts/supabase-settings.mjs)). The script uses only the Auth and Storage configuration endpoints, so its token needs no other access; the Supabase CLI's `config diff`/`push` would need a broader token. Only the settings listed in the file are written, and anything else is left alone. A new setting in `[auth]` or `[storage]` must also be added to the script's mapping, otherwise the deploy stops and says so. **Change these settings in a PR, not in the dashboard:** the next deploy would undo a dashboard change.
 
 ## Secrets and configuration
 
