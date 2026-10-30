@@ -14,6 +14,21 @@ updates:
     cooldown: { default-days: 14 }
     open-pull-requests-limit: 2
     commit-message: { prefix: "chore(deps)" }
+    # Major versions we hold back on purpose; each is upgraded in its own planned PR:
+    ignore:
+      # Node.js types follow the Node version the app runs on (22: package.json engines, CI, Vercel)
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 is the new native compiler; adopt it deliberately
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # ESLint 10 needs the React plugins to support it first
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-plugin-react-hooks"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-minor-and-patch:
         patterns: ["*"]

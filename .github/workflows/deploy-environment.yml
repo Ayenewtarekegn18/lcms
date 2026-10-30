@@ -104,7 +104,11 @@ jobs:
             [ "$code" = 0 ] || [ "$code" = 2 ] || echo "Could not compare (exit $code):"
             echo '```'; echo "$out"; echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
-          [ "$code" = 0 ] || [ "$code" = 2 ]
+          if [ "$code" != 0 ] && [ "$code" != 2 ]; then
+            # also as an annotation: visible on the run page and through the API, unlike the log
+            echo "::error title=Supabase settings::$(echo "$out" | grep -v '^\s*$' | tail -3 | tr '\n' ' ')"
+            exit 1
+          fi
 
       - name: "Supabase settings: apply supabase/config.toml"
         if: env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_PROJECT_REF != '' && vars.SUPABASE_CONFIG_PUSH == 'true'

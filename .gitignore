@@ -52,3 +52,6 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /e2e/.auth/
+
+# Claude Code: temporary git worktrees for parallel work
+/.claude/worktrees/
