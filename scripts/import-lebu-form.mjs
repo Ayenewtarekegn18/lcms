@@ -14,6 +14,7 @@
 // Safe to re-run: members whose number already exists are skipped.
 import fs from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
 import { registrationSchema, cleanRegistration, emptyRegistration, FIELDS } from '../lib/members/registration.ts'
 
 const args = process.argv.slice(2)
@@ -74,12 +75,12 @@ function validate(m) {
   let result = registrationSchema.safeParse(input)
   const dropped = []
   if (!result.success) {
-    const bad = Object.keys(result.error.flatten().fieldErrors)
+    const bad = Object.keys(z.flattenError(result.error).fieldErrors)
     const fatal = bad.filter((k) => required.has(k))
     if (fatal.length) return { error: `invalid ${fatal.join(', ')}` }
     for (const k of bad) { input[k] = Array.isArray(input[k]) ? [] : ''; dropped.push(k) }
     result = registrationSchema.safeParse(cleanRegistration(input))
-    if (!result.success) return { error: `invalid ${Object.keys(result.error.flatten().fieldErrors).join(', ')}` }
+    if (!result.success) return { error: `invalid ${Object.keys(z.flattenError(result.error).fieldErrors).join(', ')}` }
   }
   return { data: result.data, dropped }
 }

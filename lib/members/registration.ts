@@ -129,17 +129,27 @@ export const MSG = {
 } as const
 
 const todayISO = () => new Date().toISOString().slice(0, 10)
-const blank = z.literal('')
+// An optional field: empty is fine, anything else must pass `schema`, and its own message is shown.
+// (A plain `z.literal('').or(schema)` reports only a generic "Invalid input" in Zod 4.)
+function blankOr<T extends z.ZodType>(schema: T) {
+  return z.string().transform((value, ctx): '' | z.output<T> => {
+    if (value === '') return ''
+    const result = schema.safeParse(value)
+    if (result.success) return result.data
+    for (const issue of result.error.issues) ctx.addIssue({ code: 'custom', message: issue.message })
+    return z.NEVER
+  })
+}
 const text = (max: number) => z.string().trim().max(max)
 const required = (max: number) => z.string().trim().min(1, MSG.required).max(max)
 const phone = z.string().trim().refine((v) => v.replace(/\D/g, '').length >= 7, MSG.phone).pipe(z.string().max(30))
-const optPhone = blank.or(phone)
-const choice = (opts: readonly Opt[], message: string = MSG.choice) => z.enum(values(opts), { errorMap: () => ({ message }) })
-const optChoice = (opts: readonly Opt[]) => blank.or(choice(opts))
+const optPhone = blankOr(phone)
+const choice = (opts: readonly Opt[], message: string = MSG.choice) => z.enum(values(opts), { error: () => message })
+const optChoice = (opts: readonly Opt[]) => blankOr(choice(opts))
 const pastDate = z.string().date(MSG.date).refine((v) => v <= todayISO(), MSG.future)
-const optPastDate = blank.or(pastDate)
+const optPastDate = blankOr(pastDate)
 const optNumber = (min: number, max: number) =>
-  blank.or(z.string().regex(/^\d+$/, MSG.number).refine((v) => Number(v) >= min && Number(v) <= max, MSG.number))
+  blankOr(z.string().regex(/^\d+$/, MSG.number).refine((v) => Number(v) >= min && Number(v) <= max, MSG.number))
 
 export const childRow = z.object({
   name: text(150),
@@ -159,7 +169,7 @@ export const registrationSchema = z.object({
   dob: optPastDate,
   marital: optChoice(MARITAL),
   spouse: text(150),
-  spouseMemberId: blank.or(z.string().uuid()),
+  spouseMemberId: blankOr(z.string().uuid()),
   spouseAge: optNumber(0, 120),
   spousePhone: optPhone,
   children: optNumber(0, 30),
@@ -168,12 +178,12 @@ export const registrationSchema = z.object({
   blood: optChoice(BLOOD),
   phone: z.string().trim().min(1, MSG.required).pipe(phone),
   phone2: optPhone,
-  email: blank.or(z.string().trim().email(MSG.email).max(200)),
+  email: blankOr(z.string().trim().email(MSG.email).max(200)),
   subcity: optChoice(SUBCITIES),
   woreda: text(50),
   house: text(50),
   area: text(150),
-  memberSince: blank.or(z.string().date(MSG.date)),
+  memberSince: blankOr(z.string().date(MSG.date)),
   baptized: optChoice(YES_NO_BAPTIZED),
   baptismDate: optPastDate,
   prevChurch: text(150),
