@@ -1435,7 +1435,15 @@ isOneToOne: false
                 }
           }
           Views: {
-            [_ in never]: never
+            "financial_summary": {
+                  Row: {
+                    "category": string | null,"month": string | null,"total": number | null,"transaction_count": number | null,"transaction_type": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                }
           }
           Functions: {
             "current_app_role":
@@ -1455,6 +1463,11 @@ isOneToOne: false
                            },
 "register_member":
 { Args: { "payload": Json }; Returns: Json
+                           },
+"report_summary":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "attendance_total": number,"events_upcoming": number,"members_active": number,"members_total": number,"ministries_active": number
+            }[]
                            },
 "sync_member_number_seq":
 { Args: Record<PropertyKey, never>; Returns: number

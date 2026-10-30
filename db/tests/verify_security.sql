@@ -163,6 +163,34 @@ BEGIN
     IF got = '1' THEN passed := passed + 1; ELSE failures := failures || E'\n  leader can read the registry (got ' || got || ')'; END IF;
   END IF;
 
+  -- ledger totals (20261030000001): only the roles that read the ledger get rows
+  IF to_regclass('public.financial_summary') IS NOT NULL THEN
+    -- the member's own gift: RLS lets them read that row, but the totals still show them nothing
+    INSERT INTO public.financial_transactions (transaction_type, category, amount, description, member_id, recorded_by_id)
+    VALUES ('income', 'verify_security', 40, 'verify_security test row', member_id, admin_id);
+    got := pg_temp.try_as(NULL, 'SELECT count(*) FROM public.financial_summary');
+    IF got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  anon cannot read ledger totals (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(member_id, 'SELECT count(*) FROM public.financial_summary');
+    IF got = '0' THEN passed := passed + 1; ELSE failures := failures || E'\n  member gets no ledger totals, not even of their own giving (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(leader_id, 'SELECT count(*) FROM public.financial_summary');
+    IF got = '0' THEN passed := passed + 1; ELSE failures := failures || E'\n  leader gets no ledger totals (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(finance_id, $q$SELECT sum(total)::text || '/' || sum(transaction_count)::text FROM public.financial_summary WHERE category = 'verify_security'$q$);
+    IF got = '40.00/1' THEN passed := passed + 1; ELSE failures := failures || E'\n  finance reads ledger totals (got ' || got || ')'; END IF;
+  END IF;
+
+  -- report figures (20261030000001): staff and finance only (PAGE_ACCESS.reports)
+  IF to_regprocedure('public.report_summary()') IS NOT NULL THEN
+    got := pg_temp.try_as(NULL, 'SELECT count(*) FROM public.report_summary()');
+    IF got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  anon cannot read report figures (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(member_id, 'SELECT count(*) FROM public.report_summary()');
+    IF got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  member cannot read report figures (got ' || got || ')'; END IF;
+    -- finance cannot read attendance rows, but gets the count
+    got := pg_temp.try_as(finance_id, 'SELECT (members_total >= 5 AND attendance_total >= 0)::text FROM public.report_summary()');
+    IF got = 'true' THEN passed := passed + 1; ELSE failures := failures || E'\n  finance reads report figures (got ' || got || ')'; END IF;
+    got := pg_temp.try_as(leader_id, 'SELECT (members_total >= 5)::text FROM public.report_summary()');
+    IF got = 'true' THEN passed := passed + 1; ELSE failures := failures || E'\n  leader reads report figures (got ' || got || ')'; END IF;
+  END IF;
+
   -- clean up
   DELETE FROM public.financial_transactions WHERE description = 'verify_security test row';
   IF to_regclass('public.documents') IS NOT NULL THEN
