@@ -1,308 +1,229 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { Download, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { AddTransactionDialog } from '@/components/financial/add-transaction-dialog'
+import { DeleteTransactionDialog } from '@/components/financial/delete-transaction-dialog'
+import { TotalsCards } from '@/components/financial/totals-cards'
+import { downloadCsv, toCsv } from '@/lib/csv'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { TrendingUp, TrendingDown, DollarSign, Plus, Trash2, Download } from 'lucide-react'
+  formatBirr, formatLedgerDate, monthLabel, UNCATEGORIZED, type CategoryTotal, type Kind, type LedgerEntry, type LedgerPage,
+} from '@/lib/financial/summary'
 
-const INCOME_CATEGORIES = [
-  'Tithes',
-  'Offerings',
-  'Pledges',
-  'Donations',
-  'Special Offering',
-  'Other Income',
-] as const
+const PAGE_SIZE = 50
+const selectClass = 'px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white'
 
-const EXPENSE_CATEGORIES = [
-  'Ministry Spending',
-  'Maintenance',
-  'Outreach',
-  'Staff Compensation',
-  'Administrative',
-  'Utilities',
-  'Supplies',
-  'Programs',
-  'Other Expense',
-] as const
+type Filters = { type: '' | Kind; month: string }
 
-interface Transaction {
-  id: string
-  transaction_date: string
-  type: 'income' | 'expense'
-  category: string
-  amount: number
-  description: string
-  member_id?: string
+function ledgerUrl(filters: Filters, offset: number, limit: number) {
+  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) })
+  if (filters.type) params.set('type', filters.type)
+  if (filters.month) params.set('month', filters.month)
+  return `/api/financial?${params}`
+}
+
+async function readLedger(url: string): Promise<LedgerPage> {
+  const res = await fetch(url, { cache: 'no-store' })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(res.status === 403 ? 'You are not allowed to see the ledger.' : body?.error ?? 'Could not load the ledger.')
+  }
+  return body as LedgerPage
 }
 
 export default function FinancialPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [filters, setFilters] = useState<Filters>({ type: '', month: '' })
+  const [offset, setOffset] = useState(0)
+  const [ledger, setLedger] = useState<LedgerPage | null>(null)
   const [loading, setLoading] = useState(true)
-  const [totals, setTotals] = useState({ income: 0, expense: 0 })
-  const [modalOpen, setModalOpen] = useState(false)
-  const [formData, setFormData] = useState({
-    type: 'income' as 'income' | 'expense',
-    category: '',
-    amount: 0,
-    description: '',
-    transaction_date: new Date().toISOString().split('T')[0],
-  })
-  const supabase = createClient()
+  const [failed, setFailed] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [deleting, setDeleting] = useState<LedgerEntry | null>(null)
 
-  useEffect(() => {
-    fetchTransactions()
-  }, [])
-
-  const fetchTransactions = async () => {
+  const load = useCallback(async () => {
+    setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('financial_transactions')
-        .select('*')
-        .order('transaction_date', { ascending: false })
-        .limit(50)
-
-      if (error) throw error
-
-      const txns = data || []
-      setTransactions(txns)
-
-      const income = txns
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + (t.amount || 0), 0)
-      const expense = txns
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-      setTotals({ income, expense })
+      setLedger(await readLedger(ledgerUrl(filters, offset, PAGE_SIZE)))
+      setFailed(false)
     } catch (error) {
-      console.error('Error fetching transactions:', error)
+      setFailed(true)
+      toast.error(error instanceof Error ? error.message : 'Could not load the ledger.')
     } finally {
       setLoading(false)
     }
+  }, [filters, offset])
+
+  useEffect(() => { load() }, [load])
+
+  const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
+    setFilters((f) => ({ ...f, [key]: value }))
+    setOffset(0)
   }
 
-  const handleAddTransaction = async () => {
+  // Every row matching the filters, read page by page through the API.
+  const exportCsv = async () => {
+    setExporting(true)
     try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .insert([{
-          ...formData,
-          amount: parseFloat(formData.amount.toString()),
-        }])
-      if (error) throw error
-      fetchTransactions()
-      setModalOpen(false)
-      setFormData({
-        type: 'income',
-        category: '',
-        amount: 0,
-        description: '',
-        transaction_date: new Date().toISOString().split('T')[0],
-      })
+      const rows: LedgerEntry[] = []
+      let total = Infinity
+      while (rows.length < total) {
+        const page = await readLedger(ledgerUrl(filters, rows.length, 500))
+        total = page.total
+        if (page.transactions.length === 0) break
+        rows.push(...page.transactions)
+      }
+      const csv = toCsv([
+        ['Date', 'Type', 'Category', 'Amount (ETB)', 'Description'],
+        ...rows.map((t) => [t.transaction_date, t.transaction_type, t.category, t.amount, t.description]),
+      ])
+      downloadCsv(`financial-transactions-${filters.month || ledger?.today || 'all'}.csv`, csv)
     } catch (error) {
-      console.error('Error adding transaction:', error)
+      toast.error(error instanceof Error ? error.message : 'Could not export the ledger.')
+    } finally {
+      setExporting(false)
     }
   }
 
-  const handleDeleteTransaction = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this transaction?')) return
-    try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('id', id)
-      if (error) throw error
-      fetchTransactions()
-    } catch (error) {
-      console.error('Error deleting transaction:', error)
-    }
-  }
-
-  const net = totals.income - totals.expense
-
-  // Real category breakdown from transactions
-  const incomeByCategory = transactions
-    .filter((t) => t.type === 'income')
-    .reduce<Record<string, number>>((acc, t) => {
-      const cat = t.category || 'Uncategorized'
-      acc[cat] = (acc[cat] || 0) + (t.amount || 0)
-      return acc
-    }, {})
-  const expenseByCategory = transactions
-    .filter((t) => t.type === 'expense')
-    .reduce<Record<string, number>>((acc, t) => {
-      const cat = t.category || 'Uncategorized'
-      acc[cat] = (acc[cat] || 0) + (t.amount || 0)
-      return acc
-    }, {})
-
-  const handleExportCSV = () => {
-    const headers = ['Date', 'Type', 'Category', 'Amount', 'Description']
-    const rows = transactions.map((t) => [
-      t.transaction_date,
-      t.type,
-      t.category || '',
-      t.amount,
-      (t.description || '').replace(/"/g, '""'),
-    ])
-    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => (typeof c === 'string' ? `"${c}"` : c)).join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `financial-transactions-${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-    URL.revokeObjectURL(link.href)
-  }
+  const transactions = ledger?.transactions ?? []
+  const total = ledger?.total ?? 0
+  const thisMonthName = ledger ? monthLabel(ledger.month) : 'This month'
+  const periodName = filters.month ? monthLabel(filters.month) : 'All time'
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-slate-900">Financial Management</h1>
-          <p className="text-slate-500 mt-2">Track income, expenses, and church finances</p>
+          <p className="text-slate-500 mt-2">Track income, expenses, and church finances, in Birr</p>
         </div>
-        <Button variant="outline" onClick={handleExportCSV} disabled={loading || transactions.length === 0}>
+        <Button variant="outline" onClick={exportCsv} disabled={loading || exporting || total === 0}>
           <Download className="w-4 h-4 mr-2" />
-          Export CSV
+          {exporting ? 'Exporting…' : 'Export CSV'}
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="bg-white border-slate-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Total Income</span>
-              <TrendingUp className="w-4 h-4 text-green-600" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">${totals.income.toFixed(2)}</div>
-            <p className="text-xs text-slate-500 mt-1">All donations and offerings</p>
-          </CardContent>
-        </Card>
+      <TotalsCards thisMonth={ledger?.totals.thisMonth ?? null} allTime={ledger?.totals.allTime ?? null} monthName={thisMonthName} />
 
-        <Card className="bg-white border-slate-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Total Expenses</span>
-              <TrendingDown className="w-4 h-4 text-red-600" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">${totals.expense.toFixed(2)}</div>
-            <p className="text-xs text-slate-500 mt-1">Operations and programs</p>
-          </CardContent>
-        </Card>
-
-        <Card className={`border-slate-200 ${net >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Net Balance</span>
-              <DollarSign className={`w-4 h-4 ${net >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${net >= 0 ? 'text-green-900' : 'text-red-900'}`}>
-              ${net.toFixed(2)}
-            </div>
-            <p className="text-xs text-slate-500 mt-1">Income minus expenses</p>
-          </CardContent>
-        </Card>
+      <div className="mb-6 flex flex-wrap items-end gap-4">
+        <div>
+          <label htmlFor="filter-type" className="block text-xs font-medium text-slate-600 mb-1">Type</label>
+          <select id="filter-type" value={filters.type} onChange={(e) => setFilter('type', e.target.value as Filters['type'])} className={selectClass}>
+            <option value="">Income and expenses</option>
+            <option value="income">Income</option>
+            <option value="expense">Expenses</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="filter-month" className="block text-xs font-medium text-slate-600 mb-1">Month</label>
+          <select id="filter-month" value={filters.month} onChange={(e) => setFilter('month', e.target.value)} className={selectClass}>
+            <option value="">All months</option>
+            {(ledger?.months ?? []).map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+          </select>
+        </div>
+        {ledger?.permissions.create && (
+          <Button onClick={() => setAdding(true)} className="ml-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Transaction
+          </Button>
+        )}
       </div>
 
-      {/* Tabs for Different Views */}
       <Tabs defaultValue="transactions" className="mb-8">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="categories">By Category</TabsTrigger>
-          <TabsTrigger value="departments">By Department</TabsTrigger>
         </TabsList>
 
         <TabsContent value="transactions">
-          <div className="mb-6">
-            <Button onClick={() => setModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Transaction
-            </Button>
-          </div>
-
           <Card className="bg-white border-slate-200">
             <CardHeader>
-              <CardTitle className="text-slate-900">Recent Transactions</CardTitle>
-              <CardDescription>{transactions.length} total transactions</CardDescription>
+              <CardTitle className="text-slate-900">Transactions</CardTitle>
+              <CardDescription>
+                {loading && !ledger ? 'Loading…' : `${total} ${total === 1 ? 'transaction' : 'transactions'}`}
+                {ledger?.totals.period && ` · ${periodName}: income ${formatBirr(ledger.totals.period.income)}, expenses ${formatBirr(ledger.totals.period.expense)}`}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="text-center py-12">
-                  <p className="text-slate-500">Loading transactions...</p>
+              {loading && !ledger ? (
+                <p className="text-center py-12 text-slate-500">Loading transactions…</p>
+              ) : failed && !ledger ? (
+                <div className="text-center py-12 space-y-3">
+                  <p className="text-slate-500">The ledger could not be loaded.</p>
+                  <Button variant="outline" onClick={load}>Try again</Button>
                 </div>
               ) : transactions.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-slate-500">No transactions recorded</p>
-                </div>
+                <p className="text-center py-12 text-slate-500">No transactions recorded</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50">
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Date</th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Type</th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Category</th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Description</th>
-                        <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Amount</th>
-                        <th className="px-6 py-3 text-center text-sm font-semibold text-slate-900">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transactions.map((txn) => (
-                        <tr key={txn.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 text-sm text-slate-600">
-                            {new Date(txn.transaction_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                              txn.type === 'income'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {txn.type === 'income' ? 'Income' : 'Expense'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{txn.category}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{txn.description}</td>
-                          <td className="px-6 py-4 text-sm font-medium text-right">
-                            <span className={txn.type === 'income' ? 'text-green-600' : 'text-red-600'}>
-                              {txn.type === 'income' ? '+' : '-'}${txn.amount.toFixed(2)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-center">
-                            <button
-                              onClick={() => handleDeleteTransaction(txn.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full" aria-busy={loading}>
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50">
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Date</th>
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Type</th>
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Category</th>
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Description</th>
+                          <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Amount</th>
+                          {ledger?.permissions.delete && (
+                            <th className="px-6 py-3 text-center text-sm font-semibold text-slate-900">Action</th>
+                          )}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {transactions.map((txn) => {
+                          const income = txn.transaction_type === 'income'
+                          return (
+                            <tr key={txn.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors" data-testid="ledger-row">
+                              <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">{formatLedgerDate(txn.transaction_date)}</td>
+                              <td className="px-6 py-4 text-sm">
+                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${income ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {income ? 'Income' : 'Expense'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600">{txn.category || UNCATEGORIZED}</td>
+                              <td className="px-6 py-4 text-sm text-slate-600 break-words">{txn.description}</td>
+                              <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+                                <span className={income ? 'text-green-600' : 'text-red-600'}>
+                                  {income ? '+' : '−'}{formatBirr(txn.amount)}
+                                </span>
+                              </td>
+                              {ledger?.permissions.delete && (
+                                <td className="px-6 py-4 text-sm text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleting(txn)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    aria-label={`Delete ${income ? 'income' : 'expense'} of ${formatBirr(txn.amount)}`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {total > PAGE_SIZE && (
+                    <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+                      <span>{offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}</span>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={loading || offset === 0} onClick={() => setOffset((o) => Math.max(o - PAGE_SIZE, 0))}>
+                          Newer
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={loading || offset + PAGE_SIZE >= total} onClick={() => setOffset((o) => o + PAGE_SIZE)}>
+                          Older
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -310,191 +231,49 @@ export default function FinancialPage() {
 
         <TabsContent value="categories">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-white border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-slate-900">Income by Category</CardTitle>
-                <CardDescription>Contributions organized by category</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(incomeByCategory).length === 0 ? (
-                    <p className="text-slate-500 text-sm">No income recorded yet</p>
-                  ) : (
-                    Object.entries(incomeByCategory)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([category, amount]) => (
-                        <div key={category} className="flex items-center justify-between">
-                          <span className="text-slate-700">{category}</span>
-                          <span className="font-medium text-green-600">+${amount.toFixed(2)}</span>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-slate-900">Expenses by Category</CardTitle>
-                <CardDescription>Expenses organized by category</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(expenseByCategory).length === 0 ? (
-                    <p className="text-slate-500 text-sm">No expenses recorded yet</p>
-                  ) : (
-                    Object.entries(expenseByCategory)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([category, amount]) => (
-                        <div key={category} className="flex items-center justify-between">
-                          <span className="text-slate-700">{category}</span>
-                          <span className="font-medium text-red-600">-${amount.toFixed(2)}</span>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <CategoryCard title="Income by Category" period={periodName} kind="income" categories={ledger?.categories ?? null} />
+            <CategoryCard title="Expenses by Category" period={periodName} kind="expense" categories={ledger?.categories ?? null} />
           </div>
-        </TabsContent>
-
-        <TabsContent value="departments">
-          <Card className="bg-white border-slate-200">
-            <CardHeader>
-              <CardTitle className="text-slate-900">Summary by Category</CardTitle>
-              <CardDescription>All categories with totals (department/ministry tracking can be added later)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {Object.entries(expenseByCategory).length === 0 && Object.entries(incomeByCategory).length === 0 ? (
-                  <p className="text-slate-500 text-sm">No transactions to summarize</p>
-                ) : (
-                  <>
-                    {Object.entries(incomeByCategory).map(([cat, amt]) => (
-                      <div key={`i-${cat}`} className="flex items-center justify-between py-1 border-b border-slate-100">
-                        <span className="text-slate-700">{cat}</span>
-                        <span className="text-green-600 font-medium">+${amt.toFixed(2)}</span>
-                      </div>
-                    ))}
-                    {Object.entries(expenseByCategory).map(([cat, amt]) => (
-                      <div key={`e-${cat}`} className="flex items-center justify-between py-1 border-b border-slate-100">
-                        <span className="text-slate-700">{cat}</span>
-                        <span className="text-red-600 font-medium">-${amt.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Add Transaction Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Transaction</DialogTitle>
-            <DialogDescription>Record a new financial transaction</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="type" className="text-slate-700">
-                Type
-              </Label>
-              <select
-                id="type"
-                value={formData.type}
-                onChange={(e) => {
-                  const newType = e.target.value as 'income' | 'expense'
-                  setFormData({ ...formData, type: newType, category: '' })
-                }}
-                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-              >
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-              </select>
-            </div>
-
-            <div>
-              <Label htmlFor="category" className="text-slate-700">
-                Category
-              </Label>
-              <Select
-                value={formData.category}
-                onValueChange={(v) => setFormData({ ...formData, category: v })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formData.type === 'income'
-                    ? INCOME_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))
-                    : EXPENSE_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="amount" className="text-slate-700">
-                Amount
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
-                placeholder="0.00"
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="date" className="text-slate-700">
-                Date
-              </Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.transaction_date}
-                onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="description" className="text-slate-700">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Add notes about this transaction..."
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddTransaction} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              Add Transaction
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {ledger && adding && (
+        <AddTransactionDialog open={adding} onOpenChange={setAdding} today={ledger.today} onSaved={load} />
+      )}
+      <DeleteTransactionDialog entry={deleting} onClose={() => setDeleting(null)} onDeleted={load} />
     </div>
+  )
+}
+
+function CategoryCard({ title, period, kind, categories }: {
+  title: string
+  period: string
+  kind: Kind
+  categories: CategoryTotal[] | null
+}) {
+  const rows = (categories ?? []).filter((c) => c.kind === kind)
+  return (
+    <Card className="bg-white border-slate-200">
+      <CardHeader>
+        <CardTitle className="text-slate-900">{title}</CardTitle>
+        <CardDescription>{period}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {categories === null ? (
+          <p className="text-slate-500 text-sm">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-slate-500 text-sm">{kind === 'income' ? 'No income recorded' : 'No expenses recorded'}</p>
+        ) : (
+          <div className="space-y-3">
+            {rows.map((c) => (
+              <div key={c.category} className="flex items-center justify-between gap-4">
+                <span className="text-slate-700">{c.category} <span className="text-xs text-slate-400">({c.count})</span></span>
+                <span className={`font-medium ${kind === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatBirr(c.total)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

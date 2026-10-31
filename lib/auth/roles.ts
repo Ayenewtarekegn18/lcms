@@ -9,6 +9,8 @@ export const STAFF: readonly Role[] = ['admin', 'elder', 'ministry_leader']
 export const PASTORAL: readonly Role[] = ['admin', 'elder']
 export const FINANCE_READ: readonly Role[] = ['admin', 'elder', 'finance']
 export const FINANCE_WRITE: readonly Role[] = ['admin', 'finance']
+/** Who may delete ledger rows. Keep in step with the financial_delete policy (RLS): admin only. */
+export const FINANCE_DELETE: readonly Role[] = ['admin']
 /** Who may register members. Keep in step with the member_details/profiles insert policies (RLS). */
 export const REGISTRARS: readonly Role[] = ['admin']
 
