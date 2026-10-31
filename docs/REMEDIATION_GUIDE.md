@@ -51,6 +51,7 @@ The code fixes landed in these branches, merged into `main` in this order on 202
 | 5 | `ci/pipeline-tests-and-keepalive` | 3.6 unit and e2e tests and CI/CD; 0.6 keep-warm ping |
 | 6 | `fix/verify-security-before-migrations` | `verify_security.sql` works on partly migrated databases; CI checks that state |
 | 7 | `ci/environments-and-automatic-deploys` | Staging and production environments; the Deploy workflow migrates and deploys after CI ([ENGINEERING.md](ENGINEERING.md)) |
+| 8 | `feat/core-modules` | 2.1 API-only data path (lint rule blocks browser writes), 2.2 financial ledger, 2.3 calendar and events, 2.5 attendance and reports, 2.8 dead surface deleted; database types generated from the schema and checked in CI |
 
 **Database:** on 2026-10-20 the Supabase project (now **staging**, test data) went through Phase 0 and was adopted:
 - the demo logins were removed and the lockdown applied;

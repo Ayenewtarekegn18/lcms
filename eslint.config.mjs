@@ -5,7 +5,7 @@ import pluginReactHooks from "eslint-plugin-react-hooks";
 
 export default [
   {
-    ignores: ["node_modules/**/*", ".next/**/*", ".vercel/**/*", "dist/**/*", "out/**/*", "scripts/legacy/**/*", "scripts/setup-demo-accounts.js"],
+    ignores: ["node_modules/**/*", ".next/**/*", ".vercel/**/*", "dist/**/*", "out/**/*", ".claude/**/*", "scripts/legacy/**/*", "scripts/setup-demo-accounts.js"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

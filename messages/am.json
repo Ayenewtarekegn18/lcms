@@ -39,7 +39,8 @@
       "documents": "ሰነዶች",
       "reports": "ሪፖርቶች",
       "settings": "ቅንብሮች",
-      "ministries": "አገልግሎቶች"
+      "ministries": "አገልግሎቶች",
+      "auditLog": "የኦዲት መዝገብ"
     },
     "account": "መለያ",
     "logout": "ውጣ",

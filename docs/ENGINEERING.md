@@ -45,6 +45,7 @@ Migrations live in `db/migrations` and are applied by [dbmate](https://github.co
 npm run db:new add_member_photo_consent    # creates db/migrations/<timestamp>_add_member_photo_consent.sql
 npm run db:up && npm run db:down && npm run db:up   # against your local database
 npm run db:test                                     # the round trip CI runs
+npm run db:types                                    # regenerate lib/database.types.ts and commit it (CI checks it matches)
 ```
 
 Rules:
