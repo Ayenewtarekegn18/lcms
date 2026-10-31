@@ -68,25 +68,36 @@ async function seed(s) {
     ids[role] = data.id
   }
 
-  const { count } = await db.from('ministries').select('id', { count: 'exact', head: true })
+  // The ministries themselves come from the migrations (20261101000001_ministry_slugs), so the
+  // marker for "sample data already there" is the events table.
+  const { count } = await db.from('events').select('id', { count: 'exact', head: true })
   if (count) { console.log('  sample data already present, left as it is'); return }
 
   const day = (offset, hour = 10) => { const d = new Date(); d.setDate(d.getDate() + offset); d.setHours(hour, 0, 0, 0); return d.toISOString() }
   const date = (offset) => day(offset).slice(0, 10)
 
-  const ministries = await db.from('ministries').insert([
-    { name: 'መዘምራን · Choir', description: 'Sunday and festival worship', leader_id: ids.ministry_leader, meeting_day: 'Saturday', meeting_time: '15:00', location: 'Main hall' },
-    { name: 'ወጣቶች · Youth', description: 'Bible study and fellowship for 15–30', meeting_day: 'Friday', meeting_time: '17:30', location: 'Youth room' },
-    { name: 'ጸሎት · Prayer', description: 'Weekly prayer meeting', meeting_day: 'Wednesday', meeting_time: '18:00', location: 'Chapel' },
-    { name: 'የሕፃናት ክፍል · Children', description: 'Sunday school', meeting_day: 'Sunday', meeting_time: '09:00', location: 'Room 2' },
-  ]).select('id, name')
-  check('ministries', ministries)
-  const ministry = Object.fromEntries(ministries.data.map((m) => [m.name.split(' · ')[1], m.id]))
+  // Meeting times and a leader for a few of the 14 workspace ministries, found by slug.
+  const details = {
+    choir: { leader_id: ids.ministry_leader, meeting_day: 'Saturday', meeting_time: '15:00', location: 'Main hall' },
+    youth: { meeting_day: 'Friday', meeting_time: '17:30', location: 'Youth room' },
+    'prayer-groups': { meeting_day: 'Wednesday', meeting_time: '18:00', location: 'Chapel' },
+    children: { meeting_day: 'Sunday', meeting_time: '09:00', location: 'Room 2' },
+  }
+  const ministry = {}
+  for (const [slug, values] of Object.entries(details)) {
+    const res = await db.from('ministries').update(values).eq('slug', slug).select('id').single()
+    check(`ministry ${slug}`, res)
+    ministry[slug] = res.data.id
+  }
+  check('ministry members', await db.from('ministry_members').insert([
+    { ministry_id: ministry.choir, member_id: ids.ministry_leader, role: 'leader' },
+    { ministry_id: ministry.choir, member_id: ids.member, role: 'member' },
+  ]))
 
   check('events', await db.from('events').insert([
     { title: 'Sunday service', event_type: 'Service', start_date: day(7 - new Date().getDay(), 9), end_date: day(7 - new Date().getDay(), 12), location: 'Main hall', organizer_id: ids.admin },
-    { title: 'Choir rehearsal', event_type: 'Rehearsal', start_date: day(2, 15), location: 'Main hall', organizer_id: ids.ministry_leader, ministry_id: ministry.Choir },
-    { title: 'Youth conference', event_type: 'Conference', start_date: day(21, 9), end_date: day(22, 17), location: 'Main hall', organizer_id: ids.admin, ministry_id: ministry.Youth, max_attendees: 150 },
+    { title: 'Choir rehearsal', event_type: 'Rehearsal', start_date: day(2, 15), location: 'Main hall', organizer_id: ids.ministry_leader, ministry_id: ministry.choir },
+    { title: 'Youth conference', event_type: 'Conference', start_date: day(21, 9), end_date: day(22, 17), location: 'Main hall', organizer_id: ids.admin, ministry_id: ministry.youth, max_attendees: 150 },
   ]))
 
   check('financial transactions', await db.from('financial_transactions').insert([
@@ -110,7 +121,7 @@ async function seed(s) {
     const payload = registrationSchema.parse(cleanRegistration({ ...emptyRegistration(), ...p }))
     check(`member ${p.firstNameAm}`, await db.rpc('register_member', { payload }))
   }
-  console.log(`  ${Object.keys(ids).length} logins, ${ministries.data.length} ministries, 3 events, 4 transactions, ${people.length} registered members`)
+  console.log(`  ${Object.keys(ids).length} logins, ${Object.keys(ministry).length} ministries with meeting times, 3 events, 4 transactions, ${people.length} registered members`)
 }
 
 function writeEnv(s) {
