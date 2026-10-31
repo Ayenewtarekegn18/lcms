@@ -1,0 +1,12 @@
+// The app's shared UI kit (docs/MINISTRY_WORKSPACES.md → Building blocks). Import from here:
+//   import { Page, PageHeader, StatCard, DataTable, EntityFormDialog, ConfirmDialog, useApiList } from '@/components/app'
+export { Page, PageHeader } from './page-header'
+export { StatCard } from './stat-card'
+export { EmptyState } from './empty-state'
+export { ConfirmDialog } from './confirm-dialog'
+export { DataTable, type Column } from './data-table'
+export { EntityFormDialog } from './entity-form-dialog'
+export { MemberPicker } from './member-picker'
+export { RowActions } from './row-actions'
+export { useApiList, useApiMutation, type ApiList, type MutationResult } from './use-api'
+export type { FieldConfig, FieldType, FieldOption } from '@/lib/forms/fields'
