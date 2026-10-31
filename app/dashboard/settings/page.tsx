@@ -1,29 +1,8 @@
-'use client'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { LogoutButton } from './logout-button'
 
-import { CardContent } from "@/components/ui/card"
-
-import { CardDescription } from "@/components/ui/card"
-
-import { CardTitle } from "@/components/ui/card"
-
-import { CardHeader } from "@/components/ui/card"
-
-import { Card } from "@/components/ui/card"
-
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-
+// Signing out runs on the server (./actions.ts), so this page needs no browser Supabase client.
 export default function SettingsPage() {
-  const [loading, setLoading] = useState(false)
-  const supabase = createClient()
-
-  const handleLogout = async () => {
-    setLoading(true)
-    await supabase.auth.signOut()
-    window.location.href = '/auth/login'
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="mb-8">
@@ -42,13 +21,7 @@ export default function SettingsPage() {
             <p className="text-sm text-slate-600">
               Manage your account and preferences
             </p>
-            <Button
-              onClick={handleLogout}
-              disabled={loading}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              {loading ? 'Logging out...' : 'Logout'}
-            </Button>
+            <LogoutButton />
           </CardContent>
         </Card>
 
