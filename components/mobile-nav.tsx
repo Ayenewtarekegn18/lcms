@@ -58,6 +58,16 @@ export function MobileNav({ user, role }: MobileNavProps) {
         side="left"
         closeLabel={t('Sidebar.closeMenu')}
         aria-describedby={undefined}
+        onOpenAutoFocus={(e) => {
+          // Radix skips links when choosing what to focus, which lands on the language select.
+          // Start on the current page's link (or the first one) instead.
+          const content = e.currentTarget as HTMLElement
+          const link = content.querySelector<HTMLElement>('nav a[aria-current="page"]') ?? content.querySelector<HTMLElement>('nav a')
+          if (link) {
+            e.preventDefault()
+            link.focus()
+          }
+        }}
         className="w-[min(85vw,20rem)] bg-white sm:max-w-none"
       >
         <SheetTitle className="sr-only">{t('Sidebar.menu')}</SheetTitle>

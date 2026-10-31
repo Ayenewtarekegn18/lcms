@@ -61,6 +61,7 @@ test.describe('phone', () => {
       await page.goto('/dashboard')
       await menuButton(page).click()
       await expect(drawer(page)).toBeVisible()
+      await expect(drawer(page).getByRole('link', { name: 'Dashboard' })).toBeFocused() // starts on the current page
       await page.keyboard.press('Escape')
       await expect(drawer(page)).toBeHidden()
       await expect(menuButton(page)).toBeFocused()
