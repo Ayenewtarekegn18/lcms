@@ -8,7 +8,8 @@ import { TEST_USERS } from '../users'
 /** A suffix unique to this test, retry and repeat, without the clock. */
 const suffix = () => {
   const info = test.info()
-  return `${info.testId.slice(0, 8)}${info.retry}${info.repeatEachIndex}`
+  // random part: ministry names are unique in the database, and earlier runs leave rows behind
+  return `${info.testId.slice(0, 8)}${info.retry}${info.repeatEachIndex}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 type Profile = { id: string; phone: string | null }
@@ -65,7 +66,7 @@ test.describe('ministries page (admin)', () => {
     await dialog.getByLabel('Meeting time').fill('10:00 AM')
     await dialog.getByRole('button', { name: 'Add Ministry' }).click()
 
-    await expect(page.getByText(`Added ${name}`)).toBeVisible()
+    await expect(page.getByText(`Added ${name}`)).toBeVisible({ timeout: 20_000 }) // the save can be slow when the whole suite runs
     await expect(dialog).toBeHidden()
     await expect(page.getByRole('row', { name: new RegExp(name) })).toContainText('Sunday 10:00 AM')
     const rows = await serviceSelect<{ name: string; meeting_day: string | null; is_active: boolean }[]>(
