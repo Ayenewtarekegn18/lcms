@@ -35,6 +35,7 @@ export function Sidebar({ user, role }: SidebarProps) {
     { href: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard, roles: ROLES },
     { href: '/dashboard/members', labelKey: 'nav.members', icon: Users, roles: PAGE_ACCESS.members },
     { href: '/dashboard/calendar', labelKey: 'nav.calendar', icon: Calendar, roles: ROLES },
+    { href: '/dashboard/attendance', labelKey: 'nav.attendance', icon: Users, roles: PAGE_ACCESS.attendance },
     { href: '/dashboard/financial', labelKey: 'nav.financial', icon: Wallet, roles: PAGE_ACCESS.financial },
     { href: '/dashboard/communications', labelKey: 'nav.communications', icon: FileText, roles: PAGE_ACCESS.communications },
     { href: '/dashboard/documents', labelKey: 'nav.documents', icon: FileText, roles: PAGE_ACCESS.documents },
