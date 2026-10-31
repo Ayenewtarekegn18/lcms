@@ -1,62 +1,50 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole, dbError } from '@/lib/auth/guards'
-import { STAFF } from '@/lib/auth/roles'
-import { parseBody, opt, text, date, time, count } from '@/lib/api/validation'
+import { PAGE_ACCESS } from '@/lib/auth/roles'
+import { pageRange, parseBody } from '@/lib/api/validation'
+import { EVENT_SELECT, eventCreate, eventListQuery } from '@/lib/events/schema'
 
-type EventRow = { event_date?: string | null; start_date?: string | null }
-
-const createSchema = z
-  .object({
-    title: text(200),
-    description: opt(z.string().trim().max(5000)),
-    event_type: opt(z.string().trim().max(50)),
-    event_date: date,
-    event_time: opt(time),
-    location: opt(z.string().trim().max(200)),
-    max_attendees: opt(count),
-  })
-  .strict()
-
-const day = (e: EventRow) => e.event_date || (e.start_date || '').split('T')[0]
-
+// Events with their ministry's name. Any signed-in user may read them (the calendar is open to every
+// role, and events are member-readable under RLS). Query: see eventListQuery; ?limit=&offset= page.
 export async function GET(req: Request) {
   const auth = await requireRole()
   if (auth.error) return auth.error
+
   const { searchParams } = new URL(req.url)
-  const upcomingOnly = searchParams.get('upcoming') === 'true'
+  const query = eventListQuery.safeParse(Object.fromEntries(searchParams))
+  if (!query.success) {
+    return NextResponse.json({ error: 'Invalid request', issues: z.flattenError(query.error) }, { status: 400 })
+  }
+  const { from, to, ascending } = query.data
+  const [first, last] = pageRange(searchParams)
 
-  const { data, error } = await auth.supabase
-    .from('events')
-    .select('*')
-    .order('start_date', { ascending: true })
-    .limit(500)
+  let rows = auth.supabase.from('events').select(EVENT_SELECT).not('is_active', 'is', false)
+  // from/to are ISO strings produced by toISOString(), so they hold no PostgREST filter syntax.
+  // end_date >= start_date (CHECK), so "end or start >= from" means "still running at from".
+  if (from) rows = rows.or(`end_date.gte.${from},start_date.gte.${from}`)
+  if (to) rows = rows.lt('start_date', to)
+
+  const { data, error } = await rows
+    .order('start_date', { ascending })
+    .order('id', { ascending: true })
+    .range(first, last)
   if (error) return dbError(error)
-
-  const today = new Date().toISOString().split('T')[0]
-  let events = (data ?? []) as EventRow[]
-  if (upcomingOnly) events = events.filter((e) => day(e) >= today)
-  events.sort((a, b) => day(a).localeCompare(day(b)))
-  return NextResponse.json(events)
+  return NextResponse.json(data ?? [])
 }
 
+// Same roles as the events page and the staff write policies (RLS). The organizer is the signed-in
+// user; the strict schema refuses organizer_id and any other field the server owns.
 export async function POST(req: Request) {
-  const auth = await requireRole(...STAFF)
+  const auth = await requireRole(...PAGE_ACCESS.events)
   if (auth.error) return auth.error
-  const body = await parseBody(req, createSchema)
+  const body = await parseBody(req, eventCreate)
   if (body.error) return body.error
 
-  const { event_date, event_time } = body.data
   const { data, error } = await auth.supabase
     .from('events')
-    .insert([{
-      ...body.data,
-      event_type: body.data.event_type ?? 'event',
-      // start_date is NOT NULL; event_date/event_time are kept for display
-      start_date: new Date(`${event_date}T${event_time || '00:00'}`).toISOString(),
-      organizer_id: auth.user.id,
-    }])
-    .select()
+    .insert({ ...body.data, organizer_id: auth.user.id })
+    .select(EVENT_SELECT)
     .single()
   if (error) return dbError(error)
   return NextResponse.json(data, { status: 201 })
