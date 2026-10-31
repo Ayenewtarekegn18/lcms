@@ -41,7 +41,7 @@ export default defineConfig({
       name: 'mobile',
       use: { ...devices['Pixel 7'], channel: process.env.PW_CHANNEL || undefined },
       dependencies: ['setup'],
-      testMatch: /smoke\.spec\.ts/,
+      testMatch: /(smoke|shell)\.spec\.ts/,
     },
   ],
   // CI builds in an earlier step. Locally the build runs here, with the local stack's settings above
