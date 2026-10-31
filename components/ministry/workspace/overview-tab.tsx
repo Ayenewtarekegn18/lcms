@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { CalendarDays, Clock, Crown, MapPin } from 'lucide-react'
+import { CalendarDays, ChevronRight, Clock, Crown, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/app/empty-state'
 import { useApiList } from '@/components/app/use-api'
@@ -51,7 +51,7 @@ export function OverviewTab({ ctx }: { ctx: WorkspaceContext }) {
           </dl>
         </Panel>
 
-        <Panel title="Next events" action={<Button variant="ghost" size="sm" onClick={() => ctx.openTab('events')}>All events</Button>}>
+        <Panel title="Next events" action={<Button variant="ghost" size="sm" onClick={() => ctx.openTab('events')}>All events <ChevronRight aria-hidden /></Button>}>
           {next.loading && next.rows.length === 0 ? (
             <div className="space-y-3">{[0, 1].map((i) => <div key={i} className="h-10 animate-pulse rounded bg-muted" />)}</div>
           ) : next.rows.length === 0 ? (
@@ -79,7 +79,7 @@ export function OverviewTab({ ctx }: { ctx: WorkspaceContext }) {
         </Panel>
       </div>
 
-      <Panel title="Leaders" action={<Button variant="ghost" size="sm" onClick={() => ctx.openTab('members')}>Members</Button>}>
+      <Panel title="Leaders" action={<Button variant="ghost" size="sm" onClick={() => ctx.openTab('members')}>All members <ChevronRight aria-hidden /></Button>}>
         {data.leaders.length === 0 ? (
           <EmptyState icon={Crown} title="No leaders yet." description="Give a member the Leader role in the Members tab." className="py-6" />
         ) : (

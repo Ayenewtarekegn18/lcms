@@ -57,8 +57,10 @@ export function MinistryWorkspace({ slug, tabs = [] }: Props) {
 
   // The open tab lives in the URL hash (#songs), so a reload or a shared link opens the same tab.
   useEffect(() => {
-    const fromHash = decodeURIComponent(window.location.hash.slice(1))
-    if (fromHash) setTab(fromHash)
+    const follow = () => setTab(decodeURIComponent(window.location.hash.slice(1)) || 'overview')
+    if (window.location.hash) follow()
+    window.addEventListener('hashchange', follow)
+    return () => window.removeEventListener('hashchange', follow)
   }, [])
   const openTab = useCallback((key: string) => {
     setTab(key)
