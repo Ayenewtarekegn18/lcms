@@ -11,6 +11,8 @@ export const FINANCE_READ: readonly Role[] = ['admin', 'elder', 'finance']
 export const FINANCE_WRITE: readonly Role[] = ['admin', 'finance']
 /** Who may register members. Keep in step with the member_details/profiles insert policies (RLS). */
 export const REGISTRARS: readonly Role[] = ['admin']
+/** Who may edit or deactivate other people's profiles. Keep in step with the profiles update policy (RLS). */
+export const MEMBER_EDITORS: readonly Role[] = ['admin']
 
 /** Roles allowed to open each restricted dashboard section. Unlisted sections are open to every signed-in user. */
 export const PAGE_ACCESS = {
