@@ -1,52 +1,88 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole, dbError } from '@/lib/auth/guards'
-import { FINANCE_READ, FINANCE_WRITE } from '@/lib/auth/roles'
-import { parseBody, pageRange, opt, amount, date, uuid } from '@/lib/api/validation'
+import { FINANCE_DELETE, FINANCE_READ, FINANCE_WRITE } from '@/lib/auth/roles'
+import { parseBody, pageRange, opt, amount, date, text, uuid } from '@/lib/api/validation'
+import {
+  KINDS, MONTH_PATTERN, categoriesOf, churchToday, monthBounds, monthsOf, readSummary, totalsOf, type LedgerPage,
+} from '@/lib/financial/summary'
 
-const kind = z.enum(['income', 'expense'])
+// The columns the list shows and the CSV exports.
+const COLUMNS = 'id, transaction_date, transaction_type, category, amount, currency, description, member_id, created_at'
 
+const kind = z.enum(KINDS)
+
+// amount is numeric(10,2): positive, at most 99,999,999.99, at most two decimals
+const money = amount
+  .max(99_999_999.99)
+  .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, 'At most two decimals')
+
+// The fields a client may send. recorded_by_id comes from the session; id and timestamps from the
+// database. Unknown keys are rejected. The ledger is kept in Birr.
 const createSchema = z
   .object({
-    type: opt(kind),
-    transaction_type: opt(kind),
-    category: opt(z.string().trim().max(100)),
-    amount,
+    transaction_type: kind,
+    category: text(100),
+    amount: money,
+    currency: z.literal('ETB').default('ETB'),
     description: opt(z.string().trim().max(500)),
-    transaction_date: opt(date),
     member_id: opt(uuid),
-    notes: opt(z.string().trim().max(5000)),
+    transaction_date: opt(date),
   })
   .strict()
 
+const listFilters = z.object({
+  type: kind.optional(),
+  month: z.string().regex(MONTH_PATTERN, 'Expected YYYY-MM').optional(),
+})
+
+// One page of the ledger, newest first, plus the totals from financial_summary (computed in the database).
 export async function GET(req: Request) {
   const auth = await requireRole(...FINANCE_READ)
   if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-  const type = z.string().max(50).safeParse(searchParams.get('type'))
-  const startDate = date.safeParse(searchParams.get('start_date'))
-  const endDate = date.safeParse(searchParams.get('end_date'))
 
-  let query = auth.supabase.from('financial_transactions').select('*').order('transaction_date', { ascending: false })
-  if (type.success && type.data) query = query.eq('transaction_type', type.data)
-  if (startDate.success) query = query.gte('transaction_date', startDate.data)
-  if (endDate.success) query = query.lte('transaction_date', endDate.data)
-  const { data: rows, error } = await query.range(...pageRange(searchParams, 500))
-  if (error) return dbError(error)
+  const params = new URL(req.url).searchParams
+  const filters = listFilters.safeParse({ type: params.get('type') || undefined, month: params.get('month') || undefined })
+  if (!filters.success) {
+    return NextResponse.json({ error: 'Invalid request', issues: z.flattenError(filters.error) }, { status: 400 })
+  }
+  const { type, month } = filters.data
+  const [from, to] = pageRange(params, 50)
 
-  const transactions = (rows ?? []).map((t: { transaction_type?: string; amount?: unknown }) => ({
-    ...t,
-    type: t.transaction_type,
-    amount: Number(t.amount) || 0,
-  }))
-  // Sum in whole cents to avoid floating-point drift.
-  const cents = (kindName: string) =>
-    transactions.filter((t) => t.type === kindName).reduce((sum, t) => sum + Math.round(t.amount * 100), 0)
-  const income = cents('income')
-  const expense = cents('expense')
-  const totals = { income: income / 100, expense: expense / 100, total: (income - expense) / 100 }
+  let list = auth.supabase.from('financial_transactions').select(COLUMNS, { count: 'exact' })
+  if (type) list = list.eq('transaction_type', type)
+  if (month) {
+    const bounds = monthBounds(month)
+    list = list.gte('transaction_date', bounds.from).lt('transaction_date', bounds.to)
+  }
+  const [page, summary] = await Promise.all([
+    list
+      .order('transaction_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .range(from, to),
+    readSummary(auth.supabase),
+  ])
+  if (page.error) return dbError(page.error)
+  if (summary.error) return dbError(summary.error)
 
-  return NextResponse.json({ transactions, totals })
+  const today = churchToday()
+  const thisMonth = today.slice(0, 7)
+  return NextResponse.json({
+    transactions: (page.data ?? []).map((t) => ({ ...t, amount: Number(t.amount) })),
+    total: page.count ?? 0,
+    offset: from,
+    limit: to - from + 1,
+    today,
+    month: thisMonth,
+    totals: {
+      allTime: totalsOf(summary.rows),
+      thisMonth: totalsOf(summary.rows, thisMonth),
+      period: month ? totalsOf(summary.rows, month) : null,
+    },
+    categories: categoriesOf(summary.rows, month),
+    months: monthsOf(summary.rows),
+    permissions: { create: FINANCE_WRITE.includes(auth.role), delete: FINANCE_DELETE.includes(auth.role) },
+  } satisfies LedgerPage)
 }
 
 export async function POST(req: Request) {
@@ -55,17 +91,15 @@ export async function POST(req: Request) {
   const body = await parseBody(req, createSchema)
   if (body.error) return body.error
 
-  const { type, transaction_type, transaction_date, ...fields } = body.data
   const { data, error } = await auth.supabase
     .from('financial_transactions')
-    .insert([{
-      ...fields,
-      transaction_type: type ?? transaction_type ?? 'income',
-      transaction_date: transaction_date ?? new Date().toISOString().slice(0, 10),
+    .insert({
+      ...body.data,
+      transaction_date: body.data.transaction_date ?? churchToday(),
       recorded_by_id: auth.user.id,
-    }])
-    .select()
+    })
+    .select(COLUMNS)
     .single()
   if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
+  return NextResponse.json({ ...data, amount: Number(data.amount) }, { status: 201 })
 }

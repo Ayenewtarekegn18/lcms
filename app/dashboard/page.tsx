@@ -12,44 +12,42 @@ import { Button } from '@/components/ui/button'
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  // Get current user
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Fetch statistics
+  // Counts only (head: true): no rows leave the database, so the home page stays fast.
+  // Rendered on the server with the user's session, so RLS decides what each count includes.
+  const today = new Date().toISOString().slice(0, 10)
   const [members, ministries, events] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id', { count: 'exact' })
-      .eq('is_active', true),
-    supabase
-      .from('ministries')
-      .select('id', { count: 'exact' })
-      .eq('is_active', true),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('ministries').select('id', { count: 'exact', head: true }).eq('is_active', true),
     supabase
       .from('events')
-      .select('id', { count: 'exact' })
-      .gte('event_date', new Date().toISOString().split('T')[0]),
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .gte('start_date', today),
   ])
+  // A failed count shows a dash rather than a misleading 0.
+  const count = (r: { count: number | null; error: unknown }) => (r.error ? '–' : (r.count ?? 0))
 
   const stats = [
     {
       title: 'Total Members',
-      value: members.count || 0,
+      value: count(members),
       description: 'Active church members',
       href: '/dashboard/members',
     },
     {
       title: 'Ministries',
-      value: ministries.count || 0,
+      value: count(ministries),
       description: 'Active ministries',
       href: '/dashboard/ministries',
     },
     {
       title: 'Upcoming Events',
-      value: events.count || 0,
-      description: 'Events this month',
+      value: count(events),
+      description: 'Events from today on',
       href: '/dashboard/events',
     },
   ]

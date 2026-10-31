@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
+import type { Database } from '@/lib/database.types'
 
 export function createClient() {
   // In browser, Next.js exposes NEXT_PUBLIC_ vars via process.env
@@ -26,5 +27,5 @@ Then restart your dev server with: npm run dev`
     throw new Error('Invalid NEXT_PUBLIC_SUPABASE_URL: ' + supabaseUrl)
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
 }

@@ -33,6 +33,7 @@
       "dashboard": "Dashboard",
       "members": "Members",
       "calendar": "Calendar",
+      "attendance": "Attendance",
       "financial": "Financial",
       "communications": "Communications",
       "documents": "Documents",
@@ -43,6 +44,11 @@
     },
     "account": "Account",
     "logout": "Logout",
-    "loggingOut": "Logging out..."
+    "loggingOut": "Logging out...",
+    "navLabel": "Main navigation",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "skipToContent": "Skip to main content"
   }
 }
