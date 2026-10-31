@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { opt, text, uuid, date, time, count } from '@/lib/api/validation'
 import { MINISTRY_ROLES } from '@/lib/ministries/workspace'
+import { CHOIR_SCHEDULE_TYPES, VOICE_PARTS } from '@/lib/ministries/choir'
 
 // Request schemas shared by several routes. Route files may only export HTTP handlers,
 // so shared schemas live here. Every object is .strict(): unknown keys are rejected.
@@ -112,9 +113,6 @@ export const ministryMembershipUpdate = z
   .object({ role: ministryRole, joined_date: opt(date), is_active: z.boolean() })
   .partial()
   .strict()
-
-export const VOICE_PARTS = ['Soprano', 'Alto', 'Tenor', 'Bass'] as const
-export const CHOIR_SCHEDULE_TYPES = ['rehearsal', 'performance'] as const
 
 const choirMemberFields = {
   member_id: uuid,

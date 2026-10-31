@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { collectionRoutes } from '@/lib/api/collection'
-import { CHOIR_SCHEDULE_TYPES, choirScheduleCreate } from '@/lib/api/schemas'
+import { choirScheduleCreate } from '@/lib/api/schemas'
+import { CHOIR_SCHEDULE_TYPES } from '@/lib/ministries/choir'
 import { ROLES, STAFF } from '@/lib/auth/roles'
 
 // Choir rehearsals and performances: every signed-in user may read them, staff plan them (RLS:

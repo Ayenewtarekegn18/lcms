@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { collectionRoutes } from '@/lib/api/collection'
-import { choirMemberCreate, VOICE_PARTS } from '@/lib/api/schemas'
+import { choirMemberCreate } from '@/lib/api/schemas'
+import { VOICE_PARTS } from '@/lib/ministries/choir'
 import { STAFF } from '@/lib/auth/roles'
 
 // Choir voice parts (choir_members is staff-only under RLS): one row per singer.

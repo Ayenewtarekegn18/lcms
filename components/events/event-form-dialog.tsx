@@ -22,11 +22,13 @@ type Props = {
   event?: EventItem | null
   /** The day ('YYYY-MM-DD') a new event starts on; today when not given. */
   defaultDate?: string | null
+  /** The ministry a new event belongs to (a ministry workspace's Events tab); none when not given. */
+  defaultMinistryId?: string | null
   onSaved: (saved: Tables<'events'>) => void
 }
 
 /** Add or edit an event through the events API. Times are the user's local times. */
-export function EventFormDialog({ open, onOpenChange, event, defaultDate, onSaved }: Props) {
+export function EventFormDialog({ open, onOpenChange, event, defaultDate, defaultMinistryId, onSaved }: Props) {
   const [values, setValues] = useState<EventFormValues>(() => emptyEventForm(''))
   const [errors, setErrors] = useState<EventFormErrors>({})
   const [saving, setSaving] = useState(false)
@@ -36,9 +38,9 @@ export function EventFormDialog({ open, onOpenChange, event, defaultDate, onSave
   // Fresh values each time the dialog opens.
   useEffect(() => {
     if (!open) return
-    setValues(event ? eventToForm(event) : emptyEventForm(defaultDate || dayKey(new Date())))
+    setValues(event ? eventToForm(event) : { ...emptyEventForm(defaultDate || dayKey(new Date())), ministry_id: defaultMinistryId ?? '' })
     setErrors({})
-  }, [open, event, defaultDate])
+  }, [open, event, defaultDate, defaultMinistryId])
 
   // Active ministries for the select; loaded on first open, tried again on the next open if it failed.
   useEffect(() => {
