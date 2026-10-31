@@ -44,6 +44,11 @@
     },
     "account": "መለያ",
     "logout": "ውጣ",
-    "loggingOut": "በመውጣት ላይ..."
+    "loggingOut": "በመውጣት ላይ...",
+    "navLabel": "ዋና ምናሌ",
+    "menu": "ምናሌ",
+    "openMenu": "ምናሌ ክፈት",
+    "closeMenu": "ምናሌ ዝጋ",
+    "skipToContent": "ወደ ዋናው ይዘት ዝለል"
   }
 }
