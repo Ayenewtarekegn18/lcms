@@ -1,0 +1,35 @@
+# Demo data for a ministry try-out on STAGING: one login per ministry (password = the DEMO_PASSWORD
+# secret), demo members, ministry rosters, upcoming events and sample rows. Run by hand only
+# (Actions → Seed demo data → Run workflow); safe to re-run. Never runs against production.
+# Needs in the "staging" environment: secret SUPABASE_SERVICE_ROLE_KEY, secret DEMO_PASSWORD,
+# and the repository secret SUPABASE_URL (already used by the keep-warm ping). docs/SETUP.md §7.
+name: Seed demo data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: staging
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+      DEMO_TARGET: staging
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --ignore-scripts
+      - name: Seed
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$DEMO_PASSWORD" ]; then
+            echo "::error::Set SUPABASE_SERVICE_ROLE_KEY and DEMO_PASSWORD in the staging environment (docs/SETUP.md §7)"
+            exit 1
+          fi
+          node scripts/seed-demo.mjs | tee -a "$GITHUB_STEP_SUMMARY"
