@@ -77,6 +77,7 @@ const queryInstant = z.union([instant, z.iso.date()]).transform((v) => new Date(
  *  - to:   events starting before it (start < to)
  *  - upcoming=true: from the start of today (UTC), for callers that don't send `from`
  *  - order: by start; soonest first when there is a lower bound, newest first otherwise
+ *  - ministry_id: only that ministry's events (ministry workspaces)
  */
 export const eventListQuery = z
   .object({
@@ -84,8 +85,9 @@ export const eventListQuery = z
     to: queryInstant.optional(),
     upcoming: z.enum(['true', 'false']).optional(),
     order: z.enum(['asc', 'desc']).optional(),
+    ministry_id: uuid.optional(),
   })
-  .transform(({ from, to, upcoming, order }) => {
+  .transform(({ from, to, upcoming, order, ministry_id }) => {
     const since = from ?? (upcoming === 'true' ? `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z` : undefined)
-    return { from: since, to, ascending: (order ?? (since ? 'asc' : 'desc')) === 'asc' }
+    return { from: since, to, ascending: (order ?? (since ? 'asc' : 'desc')) === 'asc', ministry_id }
   })

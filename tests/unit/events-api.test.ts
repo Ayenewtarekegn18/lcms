@@ -56,7 +56,7 @@ describe('GET /api/events', () => {
     expect(await res.json()).toEqual([{ id: EVENT }])
     expect(calls).toEqual([
       'from events',
-      `select ${JSON.stringify(EVENT_SELECT)}`,
+      `select ${JSON.stringify(EVENT_SELECT)} {"count":"exact"}`,
       'not "is_active" "is" false',
       'or "end_date.gte.2026-10-31T21:00:00.000Z,start_date.gte.2026-10-31T21:00:00.000Z"',
       'lt "start_date" "2026-11-30T21:00:00.000Z"',
@@ -70,6 +70,13 @@ describe('GET /api/events', () => {
     expect(calls).toContain('order "start_date" {"ascending":false}')
     expect(calls).toContain('range 50 99')
     expect(calls.some((c) => c.startsWith('or ') || c.startsWith('lt '))).toBe(false)
+  })
+  it("filters by ministry and reports the total in X-Total-Count", async () => {
+    result = { data: [{ id: EVENT }], error: null, count: 3 } as typeof result
+    const res = await get(`?ministry_id=${USER}&upcoming=true`)
+    expect(calls).toContain(`eq "ministry_id" "${USER}"`)
+    expect(res.headers.get('X-Total-Count')).toBe('3')
+    expect((await get('?ministry_id=choir')).status).toBe(400)
   })
   it('refuses a malformed window before querying', async () => {
     expect((await get('?from=2026-10-01T00:00:00Z,id.eq.x')).status).toBe(400)

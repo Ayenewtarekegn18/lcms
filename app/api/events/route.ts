@@ -16,21 +16,24 @@ export async function GET(req: Request) {
   if (!query.success) {
     return NextResponse.json({ error: 'Invalid request', issues: z.flattenError(query.error) }, { status: 400 })
   }
-  const { from, to, ascending } = query.data
+  const { from, to, ascending, ministry_id } = query.data
   const [first, last] = pageRange(searchParams)
 
-  let rows = auth.supabase.from('events').select(EVENT_SELECT).not('is_active', 'is', false)
+  let rows = auth.supabase.from('events').select(EVENT_SELECT, { count: 'exact' }).not('is_active', 'is', false)
   // from/to are ISO strings produced by toISOString(), so they hold no PostgREST filter syntax.
   // end_date >= start_date (CHECK), so "end or start >= from" means "still running at from".
   if (from) rows = rows.or(`end_date.gte.${from},start_date.gte.${from}`)
   if (to) rows = rows.lt('start_date', to)
+  if (ministry_id) rows = rows.eq('ministry_id', ministry_id)
 
-  const { data, error } = await rows
+  const { data, error, count } = await rows
     .order('start_date', { ascending })
     .order('id', { ascending: true })
     .range(first, last)
   if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
+  const list = data ?? []
+  // the number of matching events, for paging (same header as the other list routes)
+  return NextResponse.json(list, { headers: { 'X-Total-Count': String(count ?? list.length) } })
 }
 
 // Same roles as the events page and the staff write policies (RLS). The organizer is the signed-in
