@@ -18,6 +18,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
+  // A recovery link sent from the Supabase dashboard comes back to the site's home page, which sends
+  // signed-out visitors here with the link's #access_token…&type=recovery: pass it to the reset page.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') {
+      router.replace(`/auth/update-password${window.location.hash}`)
+    }
+  }, [router])
+
   // Check environment variables on mount (non-blocking)
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {

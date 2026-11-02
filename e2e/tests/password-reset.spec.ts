@@ -74,6 +74,12 @@ test.describe('password reset', () => {
     }
   })
 
+  test('a dashboard recovery link that lands on the sign-in page goes on to the reset page', async ({ page }) => {
+    await page.goto('/auth/login#access_token=not-a-real-token&refresh_token=nope&type=recovery')
+    await expect(page).toHaveURL(/\/auth\/update-password/)
+    await expect(page.getByRole('heading', { name: 'This link has expired' })).toBeVisible()
+  })
+
   test('a used, expired or missing link asks for a new one', async ({ page }) => {
     await page.goto('/auth/update-password')
     await expect(page.getByRole('heading', { name: 'This link has expired' })).toBeVisible()
