@@ -1,39 +1,18 @@
-import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { requireRole, dbError } from '@/lib/auth/guards'
+import { collectionRoutes } from '@/lib/api/collection'
+import { deaconCareVisitCreate } from '@/lib/api/schemas'
 import { PASTORAL } from '@/lib/auth/roles'
-import { parseBody, pageRange, opt, uuid, date } from '@/lib/api/validation'
 
-// Care visit notes are confidential: admin and elder only (assigned deacons also see their own visits via RLS).
-const createSchema = z
-  .object({
-    member_id: uuid,
-    visit_date: date,
-    notes: opt(z.string().trim().max(5000)),
-  })
-  .strict()
-
-export async function GET(req: Request) {
-  const auth = await requireRole(...PASTORAL)
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-
-  const { data, error } = await auth.supabase
-    .from('deacon_care_visits')
-    .select('*, member:profiles!member_id(id, first_name, last_name), visitor:profiles!visitor_id(id, first_name, last_name)')
-    .order('visit_date', { ascending: false })
-    .range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...PASTORAL)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, createSchema)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase.from('deacon_care_visits').insert([{ ...body.data, visitor_id: auth.user.id }]).select().single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Deacons' care visits are confidential (RLS: admin and elder read and write; a visitor also sees their own
+// visits, but the routes stay with the group).   GET ?search= (member's name) &limit=&offset=
+//   POST { member_id, visit_date, notes? }; visitor_id is the signed-in user.
+const list = collectionRoutes({
+  table: 'deacon_care_visits',
+  roles: { read: PASTORAL, write: PASTORAL },
+  create: deaconCareVisitCreate,
+  select: '*, member:profiles!member_id!inner(id, first_name, last_name), visitor:profiles!visitor_id(id, first_name, last_name)',
+  search: { columns: ['first_name', 'last_name'], referencedTable: 'member' },
+  order: { column: 'visit_date', ascending: false },
+  owner: 'visitor_id',
+})
+export const GET = list.GET
+export const POST = list.POST
