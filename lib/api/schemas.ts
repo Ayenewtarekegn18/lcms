@@ -300,3 +300,53 @@ export const workersAidDisbursementCreate = z.object(disbursementFields).strict(
 export const workersAidDisbursementUpdate = z.object(disbursementFields).omit({ beneficiary_id: true }).partial().strict()
 /** POST /api/workers-aid-disbursements/months: pay every active beneficiary not yet paid in that date's month. */
 export const workersAidMonthlyRun = z.object({ disbursement_date: date }).strict()
+
+// ---- Mission and Prayer Groups ministries (app/dashboard/ministry/mission, …/prayer-groups) ----
+// The imports sit with this block so it merges cleanly beside the other ministries' blocks.
+import { MISSION_TRIP_STATUSES } from '@/lib/ministries/mission'
+import { PRAYER_REQUEST_STATUSES } from '@/lib/ministries/prayer'
+
+const missionTripFields = {
+  title: text(200),
+  trip_date: opt(date),
+  location: opt(z.string().trim().max(200)),
+  description: opt(notes),
+  status: opt(z.enum(MISSION_TRIP_STATUSES)),
+}
+/** POST /api/mission-trips (status defaults to 'planned'). */
+export const missionTripCreate = z.object(missionTripFields).strict()
+export const missionTripUpdate = z.object(missionTripFields).partial().strict()
+
+/** POST /api/mission-trip-participants: one row per person and trip (trip_id, member_id is unique). */
+export const missionParticipantCreate = z
+  .object({ trip_id: uuid, member_id: uuid, role: opt(z.string().trim().max(100)) })
+  .strict()
+/** PATCH /api/mission-trip-participants/[id]: the trip and the person can't change, their role can. */
+export const missionParticipantUpdate = z.object({ role: opt(z.string().trim().max(100)) }).strict()
+
+const missionReportFields = { trip_id: uuid, report_text: text(20000), report_date: opt(date) }
+/** POST /api/mission-reports (created_by_id is the signed-in user; report_date defaults to today). */
+export const missionReportCreate = z.object(missionReportFields).strict()
+export const missionReportUpdate = z.object(missionReportFields).partial().strict()
+
+const prayerGroupFields = {
+  name: text(200),
+  description: opt(notes),
+  meeting_schedule: opt(z.string().trim().max(200)),
+}
+export const prayerGroupCreate = z.object(prayerGroupFields).strict()
+export const prayerGroupUpdate = z.object(prayerGroupFields).partial().strict()
+
+/** POST /api/prayer-requests (requested_by_id is the signed-in user; a new request is open). */
+export const prayerRequestCreate = z
+  .object({
+    group_id: opt(uuid),
+    request_text: text(5000),
+    status: z.enum(PRAYER_REQUEST_STATUSES).default('open'),
+  })
+  .strict()
+/** PATCH /api/prayer-requests/[id] (pastors and elders only). */
+export const prayerRequestUpdate = z
+  .object({ group_id: opt(uuid), request_text: text(5000), status: z.enum(PRAYER_REQUEST_STATUSES) })
+  .partial()
+  .strict()

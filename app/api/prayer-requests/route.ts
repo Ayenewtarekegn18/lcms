@@ -1,44 +1,24 @@
-import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole, dbError } from '@/lib/auth/guards'
-import { parseBody, pageRange, opt, text, uuid } from '@/lib/api/validation'
+import { collectionRoutes } from '@/lib/api/collection'
+import { prayerRequestCreate } from '@/lib/api/schemas'
+import { uuid } from '@/lib/api/validation'
+import { PRAYER_REQUEST_STATUSES } from '@/lib/ministries/prayer'
+import { ROLES } from '@/lib/auth/roles'
 
-// Any member may submit and read their own requests; admin/elder see all (enforced by RLS).
-const createSchema = z
-  .object({
-    group_id: opt(uuid),
-    request_text: text(5000),
-    status: opt(z.string().trim().max(50)),
-  })
-  .strict()
-
-export async function GET(req: Request) {
-  const auth = await requireRole()
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-  const groupId = uuid.safeParse(searchParams.get('group_id'))
-
-  let query = auth.supabase
-    .from('prayer_requests')
-    .select('*, requested_by:profiles!requested_by_id(id, first_name, last_name)')
-    .order('created_at', { ascending: false })
-  if (groupId.success) query = query.eq('group_id', groupId.data)
-  const { data, error } = await query.range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole()
-  if (auth.error) return auth.error
-  const body = await parseBody(req, createSchema)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase
-    .from('prayer_requests')
-    .insert([{ ...body.data, requested_by_id: auth.user.id, status: body.data.status ?? 'active' }])
-    .select()
-    .single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Prayer requests are confidential (RLS: prayer_requests_pastoral_all, admin and elder). RLS also lets
+// every signed-in user submit a request of their own and read their own requests
+// (prayer_requests_create_own, prayer_requests_own), so listing and adding are open to every role and
+// the database decides which rows each person gets; changing and deleting stay pastoral ([id]/route.ts).
+//   GET ?group_id= &status= &search= (request text) &limit=&offset=   POST { request_text, group_id?, status? }
+const list = collectionRoutes({
+  table: 'prayer_requests',
+  roles: { read: ROLES, write: ROLES },
+  create: prayerRequestCreate,
+  select: '*, group:prayer_groups!group_id(id, name), requested_by:profiles!requested_by_id(id, first_name, last_name)',
+  filters: { group_id: uuid, status: z.enum(PRAYER_REQUEST_STATUSES) },
+  search: { columns: ['request_text'] },
+  order: { column: 'created_at', ascending: false },
+  owner: 'requested_by_id',
+})
+export const GET = list.GET
+export const POST = list.POST
