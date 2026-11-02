@@ -80,7 +80,7 @@ function MinistryCardLink({ ministry: m }: { ministry: MinistryCard }) {
         className="group flex h-full flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <div className="flex items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition group-hover:bg-primary group-hover:text-primary-foreground">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
             <Icon className="size-5" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">

@@ -15,11 +15,11 @@ type StatCardProps = {
 /** One figure with its label, for a row of key numbers at the top of a page. */
 export function StatCard({ label, value, icon: Icon, hint, className }: StatCardProps) {
   return (
-    <div className={cn('rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5', className)}>
+    <div className={cn('h-full rounded-2xl border border-border bg-card p-4 shadow-soft sm:p-5', className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
         {Icon && (
-          <span className="hidden size-8 shrink-0 items-center sm:flex justify-center rounded-lg bg-muted text-muted-foreground">
+          <span className="hidden size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-primary sm:flex">
             <Icon className="size-4" aria-hidden />
           </span>
         )}
@@ -29,7 +29,7 @@ export function StatCard({ label, value, icon: Icon, hint, className }: StatCard
       ) : (
         <p className="mt-1 text-2xl font-bold tabular-nums text-foreground sm:mt-2 sm:text-3xl">{value}</p>
       )}
-      {hint && <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1 hidden truncate text-xs text-muted-foreground sm:block">{hint}</p>}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/components/i18n-provider";
-import { karla, noto_ethiopic, noto_serif_ethiopic } from "@/lib/fonts";
+import { jakarta, noto_ethiopic } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${karla.variable} ${noto_ethiopic.variable} ${noto_serif_ethiopic.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${jakarta.variable} ${noto_ethiopic.variable}`}>
       <body className="antialiased">
         <I18nProvider>
           {/* Light only for now: the church theme (app/globals.css) has no dark colours yet. */}

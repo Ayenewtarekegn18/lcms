@@ -17,8 +17,9 @@ import { TEST_PASSWORD, TEST_USERS } from '../e2e/users.ts'
 import { cleanRegistration, emptyRegistration, registrationSchema } from '../lib/members/registration.ts'
 
 const ENV_FILE = '.env.development.local'
-// CI starts only what the tests use; locally you also get Studio (database UI) and Mailpit (emails)
-const CI_EXCLUDE = 'studio,postgres-meta,imgproxy,mailpit,supavisor,logflare,vector,edge-runtime,realtime'
+// CI starts only what the tests use (Mailpit included: the password-reset e2e reads its email);
+// locally you also get Studio (database UI)
+const CI_EXCLUDE = 'studio,postgres-meta,imgproxy,supavisor,logflare,vector,edge-runtime,realtime'
 
 const fail = (msg) => { console.error(`\n✖ ${msg}`); process.exit(1) }
 

@@ -60,7 +60,7 @@ export function OverviewTab({ ctx }: { ctx: WorkspaceContext }) {
             <ul className="divide-y divide-border">
               {next.rows.map((e) => (
                 <li key={e.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-muted text-foreground">
+                  <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl bg-accent text-primary">
                     <span className="text-[10px] font-medium uppercase leading-none text-muted-foreground">
                       {new Date(e.start_date).toLocaleString(undefined, { month: 'short' })}
                     </span>
