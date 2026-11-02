@@ -1,40 +1,19 @@
-import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole, dbError } from '@/lib/auth/guards'
-import { STAFF } from '@/lib/auth/roles'
-import { parseBody, pageRange, opt, text, date } from '@/lib/api/validation'
+import { collectionRoutes } from '@/lib/api/collection'
+import { missionTripCreate } from '@/lib/api/schemas'
+import { MISSION_TRIP_STATUSES } from '@/lib/ministries/mission'
+import { ROLES, STAFF } from '@/lib/auth/roles'
 
-const createSchema = z
-  .object({
-    title: text(200),
-    trip_date: opt(date),
-    location: opt(z.string().trim().max(200)),
-    description: opt(z.string().trim().max(5000)),
-    status: opt(z.string().trim().max(50)),
-  })
-  .strict()
-
-export async function GET(req: Request) {
-  const auth = await requireRole()
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-
-  const { data, error } = await auth.supabase
-    .from('mission_trips')
-    .select('*')
-    .order('trip_date', { ascending: false, nullsFirst: false })
-    .range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, createSchema)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase.from('mission_trips').insert([{ ...body.data, status: body.data.status ?? 'planned' }]).select().single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Mission trips: every signed-in user may read them, staff plan and change them (RLS: mission_trips is
+// member-readable).   GET ?search= (title, location) &status= &limit=&offset=
+//   POST { title, trip_date?, location?, description?, status? }
+const list = collectionRoutes({
+  table: 'mission_trips',
+  roles: { read: ROLES, write: STAFF },
+  create: missionTripCreate,
+  filters: { status: z.enum(MISSION_TRIP_STATUSES) },
+  search: { columns: ['title', 'location'] },
+  order: [{ column: 'trip_date', ascending: false }, { column: 'title' }],
+})
+export const GET = list.GET
+export const POST = list.POST
