@@ -1,311 +1,178 @@
 'use client'
 
-import { useState } from 'react'
-import { MinistryDashboard } from '@/components/ministry/ministry-dashboard'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { CalendarDays, CalendarClock, Speaker, UserRound, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
-import { 
-  Users, 
-  Calendar, 
-  Zap, 
-  Music, 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
-  Mic, 
-  Speaker,
-  Clock,
-  CheckCircle2,
-  AlertTriangle
-} from 'lucide-react'
+import { MinistryWorkspace } from '@/components/ministry/workspace/MinistryWorkspace'
+import { lookupResourceTab } from '@/components/ministry/workspace/lookup-resource-tab'
+import { defineResourceTab } from '@/components/ministry/workspace/types'
+import { choiceLabel } from '@/lib/ministries/options'
+import { EQUIPMENT_STATUSES, WORSHIP_TYPES } from '@/lib/ministries/stage-worship'
+import type { Tables } from '@/lib/database.types'
+import { formatDate, memberName } from '@/lib/members/directory'
 
-// Mock Data
-const MOCK_SERVICES = [
+// Stage & Worship: services, the teams that lead them and who serves on each, rehearsals and the stage
+// equipment. Overview, Members and Events come with MinistryWorkspace.
+
+type Person = { id: string; first_name: string; last_name: string }
+type Service = Tables<'worship_events'> & { leader: Person | null }
+type Team = Tables<'worship_teams'> & { members?: { count: number }[] }
+type TeamMember = Tables<'worship_team_members'> & { member: Person | null; team: { id: string; name: string } | null }
+type Rehearsal = Tables<'worship_rehearsals'> & { event: { id: string; title: string; event_date: string } | null }
+type Equipment = Tables<'worship_equipment'>
+
+const muted = (text: string) => <span className="text-muted-foreground">{text}</span>
+const personName = (p: Person | null) => (p ? memberName(p) : null)
+const songCount = (list: string | null) => {
+  const n = (list ?? '').split('\n').filter((line) => line.trim()).length
+  return n ? `${n} ${n === 1 ? 'song' : 'songs'}` : muted('—')
+}
+const serviceLabel = (s: { title: string; event_date: string }) => `${s.title} · ${formatDate(s.event_date)}`
+
+const services = defineResourceTab<Service>({
+  key: 'services',
+  label: 'Services',
+  icon: CalendarDays,
+  api: '/api/worship-events',
+  noun: 'service',
+  searchPlaceholder: 'Search by title or place',
+  describe: (s) => serviceLabel(s),
+  columns: [
+    { key: 'title', header: 'Service', primary: true },
+    { key: 'event_date', header: 'Date', className: 'whitespace-nowrap', cell: (s) => formatDate(s.event_date) },
+    {
+      key: 'worship_type',
+      header: 'Type',
+      cell: (s) => (s.worship_type ? <Badge variant="secondary" className="whitespace-nowrap">{choiceLabel(WORSHIP_TYPES, s.worship_type)}</Badge> : muted('—')),
+    },
+    { key: 'leader', header: 'Worship leader', cell: (s) => personName(s.leader) ?? muted('Not set') },
+    { key: 'location', header: 'Place', hideOnMobile: true },
+    { key: 'songs_list', header: 'Songs', hideOnMobile: true, className: 'whitespace-nowrap', cell: (s) => songCount(s.songs_list) },
+  ],
+  fields: [
+    { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. Sunday morning worship' },
+    { name: 'event_date', label: 'Date', type: 'date', required: true, width: 'half' },
+    { name: 'worship_type', label: 'Type', type: 'select', options: WORSHIP_TYPES, defaultValue: 'sunday_service', width: 'half' },
+    { name: 'worship_leader_id', label: 'Worship leader', type: 'member' },
+    { name: 'location', label: 'Place', type: 'text', placeholder: 'e.g. Main sanctuary' },
+    { name: 'songs_list', label: 'Songs', type: 'textarea', help: 'One song per line, in order.' },
+    { name: 'description', label: 'Description', type: 'textarea' },
+    { name: 'notes', label: 'Notes for the team', type: 'textarea' },
+  ],
+  empty: { title: 'No services planned yet.', description: 'Plan worship services with their leader and songs.' },
+})
+
+const teams = defineResourceTab<Team>({
+  key: 'teams',
+  label: 'Teams',
+  icon: UsersRound,
+  api: '/api/worship-teams',
+  noun: 'team',
+  searchPlaceholder: 'Search teams',
+  describe: (t) => t.name,
+  columns: [
+    { key: 'name', header: 'Team', primary: true },
+    { key: 'description', header: 'Description', className: 'max-w-md truncate' },
+    {
+      key: 'members',
+      header: 'People',
+      cell: (t) => {
+        const n = t.members?.[0]?.count ?? 0
+        return n ? `${n} ${n === 1 ? 'person' : 'people'}` : muted('Nobody yet')
+      },
+    },
+  ],
+  fields: [
+    { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Team A, Sound and media' },
+    { name: 'description', label: 'Description', type: 'textarea' },
+  ],
+  deleteNote: 'Its member list is deleted with it. This cannot be undone.',
+  empty: { title: 'No worship teams yet.', description: 'Create the teams that lead worship, then add who serves on them.' },
+})
+
+const teamMembers = lookupResourceTab<TeamMember, Team>(
   {
-    id: 'SVC-001',
-    name: 'Sunday Main Service',
-    date: '2024-02-11',
-    time: '09:00 AM',
-    theme: 'Grace Abounds',
-    worshipLeader: 'Dcn. Yonas',
-    status: 'Upcoming'
+    key: 'team-members',
+    label: 'Team members',
+    icon: UserRound,
+    api: '/api/worship-team-members',
+    noun: 'team member',
+    deleteVerb: 'Remove',
+    searchPlaceholder: 'Search by name',
+    describe: (m) => personName(m.member) ?? 'Unknown member',
+    columns: [
+      { key: 'member', header: 'Name', primary: true, cell: (m) => personName(m.member) ?? muted('Unknown member') },
+      { key: 'team', header: 'Team', cell: (m) => m.team?.name ?? muted('—') },
+      { key: 'role', header: 'Serves as', cell: (m) => m.role ?? muted('Not set') },
+    ],
+    fields: [
+      { name: 'team_id', label: 'Team', type: 'select', required: true, createOnly: true },
+      { name: 'member_id', label: 'Member', type: 'member', required: true, createOnly: true },
+      { name: 'role', label: 'Serves as', type: 'text', maxLength: 100, placeholder: 'e.g. Worship leader, Keyboard, Sound' },
+    ],
+    empty: { title: 'Nobody is on a team yet.', description: 'Add the singers, musicians and technicians of each team.' },
   },
   {
-    id: 'SVC-002',
-    name: 'Youth Service',
-    date: '2024-02-09',
-    time: '05:00 PM',
-    theme: 'Identity in Christ',
-    worshipLeader: 'Sis. Bethel',
-    status: 'Upcoming'
+    field: 'team_id',
+    api: '/api/worship-teams',
+    option: (t) => ({ value: t.id, label: t.name }),
+    missing: { title: 'No worship teams yet.', description: 'Create a team first, then add the people who serve on it.', tab: 'teams', action: 'Go to Teams' },
   },
+)
+
+const rehearsals = lookupResourceTab<Rehearsal, Service>(
   {
-    id: 'SVC-003',
-    name: 'Midweek Service',
-    date: '2024-02-07',
-    time: '06:00 PM',
-    theme: 'Prayer & Fasting',
-    worshipLeader: 'Bro. Natnael',
-    status: 'Completed'
-  }
-]
+    key: 'rehearsals',
+    label: 'Rehearsals',
+    icon: CalendarClock,
+    api: '/api/worship-rehearsals',
+    noun: 'rehearsal',
+    searchPlaceholder: 'Search notes',
+    describe: (r) => `Rehearsal on ${formatDate(r.rehearsal_date)}`,
+    columns: [
+      { key: 'rehearsal_date', header: 'Date', primary: true, className: 'whitespace-nowrap', cell: (r) => formatDate(r.rehearsal_date) },
+      { key: 'event', header: 'For service', cell: (r) => (r.event ? serviceLabel(r.event) : muted('General rehearsal')) },
+      { key: 'notes', header: 'Notes', className: 'max-w-xs truncate' },
+    ],
+    fields: [
+      { name: 'rehearsal_date', label: 'Date', type: 'date', required: true, width: 'half' },
+      { name: 'event_id', label: 'For service', type: 'select', width: 'half', help: 'Leave empty for a general rehearsal.' },
+      { name: 'notes', label: 'Notes', type: 'textarea', placeholder: 'Time, place, songs to practise…' },
+    ],
+    empty: { title: 'No rehearsals planned yet.', description: 'Plan rehearsals, for a service or in general.' },
+  },
+  { field: 'event_id', api: '/api/worship-events', option: (s) => ({ value: s.id, label: serviceLabel(s) }) },
+)
 
-const MOCK_TEAMS = [
-  { id: 'TM-001', name: 'Yonas T.', role: 'Worship Leader', team: 'Team A', status: 'Active' },
-  { id: 'TM-002', name: 'Bethel A.', role: 'Vocalist', team: 'Team A', status: 'Active' },
-  { id: 'TM-003', name: 'Natnael G.', role: 'Keyboardist', team: 'Team B', status: 'Active' },
-  { id: 'TM-004', name: 'Robel M.', role: 'Sound Engineer', team: 'Tech', status: 'On Leave' },
-  { id: 'TM-005', name: 'Sara K.', role: 'Visuals', team: 'Tech', status: 'Active' },
-]
-
-const MOCK_EQUIPMENT = [
-  { id: 'EQ-001', item: 'Yamaha Montage 8', category: 'Instrument', condition: 'Good', assignedTo: 'Main Sanctuary' },
-  { id: 'EQ-002', item: 'Shure SM58 (x4)', category: 'Audio', condition: 'Good', assignedTo: 'Stage' },
-  { id: 'EQ-003', item: 'Behringer X32', category: 'Mixer', condition: 'Needs Service', assignedTo: 'Sound Booth' },
-  { id: 'EQ-004', item: 'Drum Kit', category: 'Instrument', condition: 'Fair', assignedTo: 'Stage' },
-]
-
-const MOCK_REHEARSALS = [
-  { id: 'RH-001', team: 'Team A', day: 'Saturday', time: '02:00 PM', location: 'Main Sanctuary', upcoming: '2024-02-10' },
-  { id: 'RH-002', team: 'Team B', day: 'Thursday', time: '06:00 PM', location: 'Rehearsal Room', upcoming: '2024-02-08' },
-  { id: 'RH-003', team: 'Choir', day: 'Friday', time: '05:00 PM', location: 'Main Sanctuary', upcoming: '2024-02-09' },
-]
+const equipment = defineResourceTab<Equipment>({
+  key: 'equipment',
+  label: 'Equipment',
+  icon: Speaker,
+  api: '/api/worship-equipment',
+  noun: 'equipment item',
+  searchPlaceholder: 'Search equipment',
+  describe: (e) => e.name,
+  columns: [
+    { key: 'name', header: 'Item', primary: true },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (e) => {
+        const label = choiceLabel(EQUIPMENT_STATUSES, e.status)
+        if (!label) return muted('—')
+        if (e.status === 'in_repair') return <Badge variant="outline" className="border-destructive/40 text-destructive">{label}</Badge>
+        return <Badge variant={e.status === 'available' ? 'default' : 'outline'}>{label}</Badge>
+      },
+    },
+    { key: 'description', header: 'Description', className: 'max-w-md truncate' },
+  ],
+  fields: [
+    { name: 'name', label: 'Item', type: 'text', required: true, placeholder: 'e.g. Yamaha keyboard, Shure SM58 (x4)' },
+    { name: 'status', label: 'Status', type: 'select', options: EQUIPMENT_STATUSES, defaultValue: 'available', width: 'half' },
+    { name: 'description', label: 'Description', type: 'textarea', placeholder: 'Where it is kept, serial number, condition…' },
+  ],
+  empty: { title: 'No equipment listed yet.', description: 'Keep track of instruments, microphones and sound gear.' },
+})
 
 export default function StageWorshipPage() {
-  const [searchTerm, setSearchTerm] = useState('')
-
-  const metrics = [
-    { label: 'Team Members', value: 35, icon: <Users className="w-5 h-5 text-blue-600" /> },
-    { label: 'Services/Month', value: 8, icon: <Calendar className="w-5 h-5 text-green-600" /> },
-    { label: 'Equipment Items', value: 42, icon: <Zap className="w-5 h-5 text-amber-600" /> },
-    { label: 'Rehearsals/Week', value: 12, icon: <Music className="w-5 h-5 text-purple-600" /> },
-  ]
-
-  const tabs = [
-    { id: 'schedule', label: 'Service Schedule' },
-    { id: 'teams', label: 'Teams' },
-    { id: 'equipment', label: 'Equipment' },
-    { id: 'rehearsal', label: 'Rehearsals' },
-  ]
-
-  return (
-    <MinistryDashboard
-      name="Stage & Worship Ministry"
-      description="Manage worship services and stage operations"
-      icon="🎶"
-      memberCount={35}
-      lastActivity="Last Sunday's service - 450 attendees"
-      metrics={metrics}
-      tabs={tabs}
-    >
-      <Tabs defaultValue="schedule" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="schedule">Service Schedule</TabsTrigger>
-          <TabsTrigger value="teams">Teams</TabsTrigger>
-          <TabsTrigger value="equipment">Equipment</TabsTrigger>
-          <TabsTrigger value="rehearsal">Rehearsals</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="schedule" className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search services..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> Plan Service
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {MOCK_SERVICES.map((svc) => (
-              <Card key={svc.id} className="overflow-hidden">
-                <CardHeader className="bg-slate-50/50 pb-3">
-                  <div className="flex justify-between items-start">
-                    <Badge variant={svc.status === 'Upcoming' ? 'default' : 'secondary'}>
-                      {svc.status}
-                    </Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit Plan</DropdownMenuItem>
-                        <DropdownMenuItem>View Run Sheet</DropdownMenuItem>
-                        <DropdownMenuItem>Team Notification</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <CardTitle className="mt-2 text-lg">{svc.name}</CardTitle>
-                  <CardDescription className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> {svc.date} • {svc.time}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Theme:</span>
-                      <span className="font-medium">{svc.theme}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Leader:</span>
-                      <span className="font-medium">{svc.worshipLeader}</span>
-                    </div>
-                  </div>
-                  <Button variant="outline" className="w-full mt-4">
-                    View Details
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="teams" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ministry Team</CardTitle>
-              <CardDescription>Manage musicians, vocalists, and technical staff.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Team</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_TEAMS.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell className="font-medium">{member.name}</TableCell>
-                      <TableCell>{member.role}</TableCell>
-                      <TableCell>{member.team}</TableCell>
-                      <TableCell>
-                        <Badge variant={member.status === 'Active' ? 'outline' : 'secondary'} className={member.status === 'Active' ? 'text-green-600 border-green-200 bg-green-50' : ''}>
-                          {member.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="equipment" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Equipment Inventory</CardTitle>
-                  <CardDescription>Track instruments and technical gear.</CardDescription>
-                </div>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" /> Add Item
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Condition</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_EQUIPMENT.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium flex items-center gap-2">
-                        {item.category === 'Instrument' ? <Music className="h-4 w-4 text-muted-foreground" /> : <Speaker className="h-4 w-4 text-muted-foreground" />}
-                        {item.item}
-                      </TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell>{item.assignedTo}</TableCell>
-                      <TableCell>
-                        <Badge variant={item.condition === 'Good' ? 'outline' : 'destructive'} className={item.condition === 'Good' ? 'text-green-600 border-green-200' : ''}>
-                          {item.condition}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Manage</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="rehearsal" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Rehearsal Schedule</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {MOCK_REHEARSALS.map((reh) => (
-                  <div key={reh.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
-                        <Music className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">{reh.team} Rehearsal</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {reh.day}s at {reh.time} • {reh.location}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">Next: {reh.upcoming}</p>
-                      <Button variant="link" className="h-auto p-0 text-xs">Notify Team</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </MinistryDashboard>
-  )
+  return <MinistryWorkspace slug="stage-worship" tabs={[services, teams, teamMembers, rehearsals, equipment]} />
 }

@@ -1,5 +1,27 @@
 # Demo Accounts
 
+## Ministry try-out on staging
+
+One login per ministry, for a ministry representative to try their workspace on the staging app. The **Seed demo data** workflow (`.github/workflows/seed-demo.yml`, script `scripts/seed-demo.mjs`) creates:
+
+- a login `<slug>@demo.lkhc.test` per ministry (e.g. `choir@demo.lkhc.test`, `workers-aid@demo.lkhc.test`). Deacons, Charity and Workers' Aid get the `elder` role, because only admins and elders may see that data; the others get `ministry_leader`;
+- `finance@demo.lkhc.test` (role `finance`) and `member@demo.lkhc.test` (role `member`), to see the app as the treasurer and as an ordinary member;
+- 8 demo members in the register, put on each ministry's roster with the login as leader;
+- two upcoming events and a couple of sample rows for every ministry.
+
+It never touches production and is safe to run again: existing logins are reused (their password is reset to `DEMO_PASSWORD`) and a ministry that already has events is left alone.
+
+1. In GitHub → Settings → Environments → **staging**, add two secrets:
+   - `SUPABASE_SERVICE_ROLE_KEY`: Supabase → Project Settings → API keys → `service_role` (secret).
+   - `DEMO_PASSWORD`: the password every demo login gets; 12+ characters with upper and lower case letters and a digit.
+   (`SUPABASE_URL` is already there.)
+2. Actions → **Seed demo data** → Run workflow. The run's summary lists the logins.
+3. Give each representative the staging address, their login and the password. Ask them to add, edit and delete freely: it is test data.
+
+Locally: `DEMO_PASSWORD=… node --env-file=.env.development.local scripts/seed-demo.mjs`.
+
+## Older demo accounts
+
 > **Development, staging and demo projects only. Never production.** The seed creates a confirmed admin account.
 > The demo passwords that used to be printed here were published in the public repository; any project that still has those accounts with those passwords must delete them or reset their passwords ([Remediation 0.1](REMEDIATION_GUIDE.md#01-close-the-doors-at-the-platform-level)).
 

@@ -1,40 +1,20 @@
-import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole, dbError } from '@/lib/auth/guards'
+import { collectionRoutes } from '@/lib/api/collection'
+import { workersAidBeneficiaryCreate } from '@/lib/api/schemas'
+import { BENEFICIARY_STATUSES } from '@/lib/ministries/workers-aid'
 import { PASTORAL } from '@/lib/auth/roles'
-import { parseBody, pageRange, opt, uuid, date, amount } from '@/lib/api/validation'
 
-// Aid amounts are confidential: admin and elder only (same as RLS).
-const createSchema = z
-  .object({
-    member_id: uuid,
-    monthly_amount: amount,
-    start_date: opt(date),
-    notes: opt(z.string().trim().max(5000)),
-  })
-  .strict()
-
-export async function GET(req: Request) {
-  const auth = await requireRole(...PASTORAL)
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-
-  const { data, error } = await auth.supabase
-    .from('workers_aid_beneficiaries')
-    .select('*, member:profiles!member_id(id, first_name, last_name)')
-    .order('start_date', { ascending: false })
-    .range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...PASTORAL)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, createSchema)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase.from('workers_aid_beneficiaries').insert([{ ...body.data, start_date: body.data.start_date ?? new Date().toISOString().slice(0, 10) }]).select().single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Monthly Workers Aid beneficiaries: aid amounts are confidential (RLS: admin and elder read and write).
+//   GET ?search= (member's name) &status= &limit=&offset=
+//   POST { member_id, monthly_amount, start_date? (default today), status?, notes? }; one row per person.
+const list = collectionRoutes({
+  table: 'workers_aid_beneficiaries',
+  roles: { read: PASTORAL, write: PASTORAL },
+  create: workersAidBeneficiaryCreate,
+  select: '*, member:profiles!member_id!inner(id, first_name, last_name)',
+  filters: { status: z.enum(BENEFICIARY_STATUSES) },
+  search: { columns: ['first_name', 'last_name'], referencedTable: 'member' },
+  order: [{ column: 'status' }, { column: 'start_date', ascending: false }],
+})
+export const GET = list.GET
+export const POST = list.POST

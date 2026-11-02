@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import { authFile, serviceSelect } from '../helpers'
 
@@ -6,7 +7,7 @@ import { authFile, serviceSelect } from '../helpers'
 
 /** A name no other run or test uses, without depending on the clock. */
 const unique = (label: string) =>
-  `${label} ${test.info().testId.slice(0, 8)}-${test.info().retry}-${Math.random().toString(36).slice(2, 8)}`
+  `${label} ${test.info().testId.slice(0, 8)}-${test.info().retry}-${randomUUID().slice(0, 8)}`
 
 test.describe('events (admin)', () => {
   test.use({ storageState: authFile('admin') })

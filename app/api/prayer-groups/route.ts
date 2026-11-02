@@ -1,38 +1,16 @@
-import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { requireRole, dbError } from '@/lib/auth/guards'
-import { STAFF } from '@/lib/auth/roles'
-import { parseBody, pageRange, opt, text } from '@/lib/api/validation'
+import { collectionRoutes } from '@/lib/api/collection'
+import { prayerGroupCreate } from '@/lib/api/schemas'
+import { ROLES, STAFF } from '@/lib/auth/roles'
 
-const createSchema = z
-  .object({
-    name: text(200),
-    description: opt(z.string().trim().max(5000)),
-    meeting_schedule: opt(z.string().trim().max(200)),
-  })
-  .strict()
-
-export async function GET(req: Request) {
-  const auth = await requireRole()
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-
-  const { data, error } = await auth.supabase
-    .from('prayer_groups')
-    .select('*')
-    .order('name')
-    .range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, createSchema)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase.from('prayer_groups').insert([body.data]).select().single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Prayer groups: every signed-in user may read them, staff add and change them (RLS: prayer_groups is
+// member-readable).   GET ?search= (name, description, schedule) &limit=&offset=
+//   POST { name, description?, meeting_schedule? }
+const list = collectionRoutes({
+  table: 'prayer_groups',
+  roles: { read: ROLES, write: STAFF },
+  create: prayerGroupCreate,
+  search: { columns: ['name', 'description', 'meeting_schedule'] },
+  order: { column: 'name' },
+})
+export const GET = list.GET
+export const POST = list.POST

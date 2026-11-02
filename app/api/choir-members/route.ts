@@ -1,37 +1,19 @@
-import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole, dbError } from '@/lib/auth/guards'
+import { collectionRoutes } from '@/lib/api/collection'
+import { choirMemberCreate } from '@/lib/api/schemas'
+import { VOICE_PARTS } from '@/lib/ministries/choir'
 import { STAFF } from '@/lib/auth/roles'
-import { parseBody, pageRange, opt, uuid } from '@/lib/api/validation'
 
-const createSchema = z
-  .object({
-    member_id: uuid,
-    voice_part: opt(z.string().trim().max(50)),
-  })
-  .strict()
-
-export async function GET(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-
-  const { data, error } = await auth.supabase
-    .from('choir_members')
-    .select('*, member:profiles!member_id(id, first_name, last_name)')
-    .order('join_date', { ascending: false })
-    .range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, createSchema)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase.from('choir_members').insert([body.data]).select().single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Choir voice parts (choir_members is staff-only under RLS): one row per singer.
+//   GET ?search= (singer's name) &voice_part= &limit=&offset=   POST { member_id, voice_part?, join_date?, is_active? }
+const list = collectionRoutes({
+  table: 'choir_members',
+  roles: { read: STAFF, write: STAFF },
+  create: choirMemberCreate,
+  select: '*, member:profiles!member_id!inner(id, first_name, last_name)',
+  filters: { voice_part: z.enum(VOICE_PARTS) },
+  search: { columns: ['first_name', 'last_name'], referencedTable: 'member' },
+  order: [{ column: 'voice_part' }, { column: 'join_date', ascending: false }],
+})
+export const GET = list.GET
+export const POST = list.POST

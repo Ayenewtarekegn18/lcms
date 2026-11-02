@@ -840,14 +840,14 @@ isOneToOne: false
                   ]
                 },"ministries": {
                   Row: {
-                    "created_at": string | null,"description": string | null,"id": string,"is_active": boolean | null,"leader_id": string | null,"location": string | null,"meeting_day": string | null,"meeting_time": string | null,"name": string,"updated_at": string | null
+                    "created_at": string | null,"description": string | null,"id": string,"is_active": boolean | null,"leader_id": string | null,"location": string | null,"meeting_day": string | null,"meeting_time": string | null,"name": string,"name_am": string | null,"slug": string | null,"updated_at": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string | null,"description"?: string | null,"id"?: string,"is_active"?: boolean | null,"leader_id"?: string | null,"location"?: string | null,"meeting_day"?: string | null,"meeting_time"?: string | null,"name": string,"updated_at"?: string | null
+                    "created_at"?: string | null,"description"?: string | null,"id"?: string,"is_active"?: boolean | null,"leader_id"?: string | null,"location"?: string | null,"meeting_day"?: string | null,"meeting_time"?: string | null,"name": string,"name_am"?: string | null,"slug"?: string | null,"updated_at"?: string | null
                   }
                   Update: {
-                    "created_at"?: string | null,"description"?: string | null,"id"?: string,"is_active"?: boolean | null,"leader_id"?: string | null,"location"?: string | null,"meeting_day"?: string | null,"meeting_time"?: string | null,"name"?: string,"updated_at"?: string | null
+                    "created_at"?: string | null,"description"?: string | null,"id"?: string,"is_active"?: boolean | null,"leader_id"?: string | null,"location"?: string | null,"meeting_day"?: string | null,"meeting_time"?: string | null,"name"?: string,"name_am"?: string | null,"slug"?: string | null,"updated_at"?: string | null
                   }
                   Relationships: [
                     {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import { authFile, serviceSelect } from '../helpers'
 import { TEST_USERS } from '../users'
@@ -9,7 +10,7 @@ import { TEST_USERS } from '../users'
 const suffix = () => {
   const info = test.info()
   // random part: ministry names are unique in the database, and earlier runs leave rows behind
-  return `${info.testId.slice(0, 8)}${info.retry}${info.repeatEachIndex}-${Math.random().toString(36).slice(2, 8)}`
+  return `${info.testId.slice(0, 8)}${info.retry}${info.repeatEachIndex}-${randomUUID().slice(0, 8)}`
 }
 
 type Profile = { id: string; phone: string | null }

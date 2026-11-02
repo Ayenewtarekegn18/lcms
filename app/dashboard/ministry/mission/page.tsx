@@ -1,319 +1,138 @@
 'use client'
 
-import { useState } from 'react'
-import { MinistryDashboard } from '@/components/ministry/ministry-dashboard'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { FileText, Plane, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu'
-import { 
-  Users, 
-  Globe, 
-  MapPin, 
-  DollarSign, 
-  Calendar, 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle 
-} from 'lucide-react'
+import { LookupResourceTab, type Lookup } from '@/components/ministry/workspace/lookup-resource-tab'
+import { MinistryWorkspace } from '@/components/ministry/workspace/MinistryWorkspace'
+import { defineResourceTab, type CustomTab } from '@/components/ministry/workspace/types'
+import type { Tables } from '@/lib/database.types'
+import { formatDate, memberName } from '@/lib/members/directory'
+import { MISSION_TRIP_STATUS_OPTIONS, tripOptionLabel, tripStatusLabel } from '@/lib/ministries/mission'
 
-// Mock Data
-const MOCK_TRIPS = [
-  {
-    id: 'TR-2024-001',
-    location: 'Hawassa, Sidama',
-    dates: '2024-04-10 to 2024-04-15',
-    leader: 'Ev. Daniel Kebede',
-    participants: 18,
-    status: 'Completed',
-    budget: 45000,
-    outcome: '150 reached, 25 salvations'
+// Mission Ministry: trips, who goes on them, and the reports written afterwards. Trips is config only;
+// Participants and Reports pick their trip from the trips list (LookupResourceTab).
+
+type Person = { id: string; first_name: string; last_name: string }
+type TripRef = Pick<Tables<'mission_trips'>, 'id' | 'title' | 'trip_date'>
+type Trip = Tables<'mission_trips'>
+type Participant = Tables<'mission_trip_participants'> & { member: Person | null; trip: TripRef | null }
+type Report = Tables<'mission_reports'> & { trip: TripRef | null; author: Person | null }
+
+const muted = (text: string) => <span className="text-muted-foreground">{text}</span>
+const tripTitle = (t: TripRef | null) => t?.title ?? 'Unknown trip'
+const participantName = (p: Participant) => (p.member ? memberName(p.member) : 'Unknown member')
+
+const STATUS_BADGE: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+  planned: 'secondary',
+  ongoing: 'default',
+  completed: 'outline',
+  cancelled: 'destructive',
+}
+
+const trips = defineResourceTab<Trip>({
+  key: 'trips',
+  label: 'Trips',
+  icon: Plane,
+  api: '/api/mission-trips',
+  noun: 'trip',
+  searchPlaceholder: 'Search trips by title or place',
+  describe: (t) => t.title,
+  columns: [
+    { key: 'title', header: 'Trip', primary: true },
+    { key: 'trip_date', header: 'Date', cell: (t) => formatDate(t.trip_date) ?? muted('Not set') },
+    { key: 'location', header: 'Location' },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (t) => <Badge variant={STATUS_BADGE[t.status ?? 'planned'] ?? 'secondary'}>{tripStatusLabel(t.status)}</Badge>,
+    },
+    { key: 'description', header: 'Description', className: 'max-w-xs truncate', hideOnMobile: true },
+  ],
+  fields: [
+    { name: 'title', label: 'Title', type: 'text', required: true },
+    { name: 'trip_date', label: 'Date', type: 'date', width: 'half' },
+    { name: 'status', label: 'Status', type: 'select', options: MISSION_TRIP_STATUS_OPTIONS, defaultValue: 'planned', width: 'half' },
+    { name: 'location', label: 'Location', type: 'text', placeholder: 'Town or region' },
+    { name: 'description', label: 'Description', type: 'textarea', placeholder: 'Purpose, team, plans…' },
+  ],
+  deleteNote: 'Its participants and reports are deleted with it. This cannot be undone.',
+  empty: { title: 'No mission trips yet.', description: 'Plan outreach and mission trips here.' },
+})
+
+// Shared by Participants and Reports: the trip picker and the "Trip" filter.
+const tripLookup: Lookup<Trip> = {
+  api: '/api/mission-trips',
+  field: 'trip_id',
+  option: (t) => ({ value: t.id, label: tripOptionLabel(t, formatDate) }),
+  filter: { label: 'Trip', all: 'All trips' },
+  missing: {
+    title: 'Plan a trip first.',
+    description: 'Participants and reports belong to a mission trip.',
+    tab: 'trips',
+    action: 'Add a trip',
   },
-  {
-    id: 'TR-2024-002',
-    location: 'Adama, Oromia',
-    dates: '2024-06-20 to 2024-06-25',
-    leader: 'Ev. Sarah Abraham',
-    participants: 12,
-    status: 'Planned',
-    budget: 30000,
-    outcome: 'Preparation phase'
-  },
-  {
-    id: 'TR-2024-003',
-    location: 'Debre Zeit',
-    dates: '2024-08-05 to 2024-08-10',
-    leader: 'Pst. Yohannes',
-    participants: 25,
-    status: 'Planned',
-    budget: 55000,
-    outcome: 'Fundraising active'
-  }
-]
+}
 
-const MOCK_PARTICIPANTS = [
-  { id: 'P001', name: 'Abebe Bikila', role: 'Evangelist', trip: 'Hawassa', status: 'Confirmed' },
-  { id: 'P002', name: 'Sara Tadesse', role: 'Logistics', trip: 'Hawassa', status: 'Confirmed' },
-  { id: 'P003', name: 'Kebede Michael', role: 'Medical', trip: 'Adama', status: 'Pending' },
-  { id: 'P004', name: 'Almaz Ayana', role: 'Worship', trip: 'Adama', status: 'Confirmed' },
-  { id: 'P005', name: 'Haile Gebrselassie', role: 'Driver', trip: 'Debre Zeit', status: 'Interest Expressed' },
-]
+const participantsConfig = defineResourceTab<Participant>({
+  key: 'participants',
+  label: 'Participants',
+  icon: UsersRound,
+  api: '/api/mission-trip-participants',
+  noun: 'participant',
+  searchPlaceholder: 'Search participants by name',
+  describe: participantName,
+  deleteVerb: 'Remove',
+  deleteNote: 'They can be added to the trip again later.',
+  columns: [
+    { key: 'name', header: 'Participant', primary: true, cell: participantName },
+    { key: 'trip', header: 'Trip', cell: (p) => tripTitle(p.trip) },
+    { key: 'trip_date', header: 'Trip date', cell: (p) => formatDate(p.trip?.trip_date) ?? muted('—'), hideOnMobile: true },
+    { key: 'role', header: 'Role', cell: (p) => (p.role ? <Badge variant="secondary">{p.role}</Badge> : muted('Team member')) },
+  ],
+  fields: [
+    { name: 'trip_id', label: 'Trip', type: 'select', required: true, createOnly: true },
+    { name: 'member_id', label: 'Participant', type: 'member', required: true, createOnly: true },
+    { name: 'role', label: 'Role on the trip', type: 'text', maxLength: 100, placeholder: 'Team leader, preacher, driver…' },
+  ],
+  empty: { title: 'No participants yet.', description: 'Add the members going on each trip.' },
+})
 
-const MOCK_REPORTS = [
-  { id: 'Rpt-001', title: 'Hawassa Outreach Summary', date: '2024-04-20', author: 'Ev. Daniel', type: 'Field Report' },
-  { id: 'Rpt-002', title: 'Q1 Mission Budget Review', date: '2024-03-31', author: 'Finance Team', type: 'Financial' },
-  { id: 'Rpt-003', title: 'Adama Pre-visit Assessment', date: '2024-05-15', author: 'Ev. Sarah', type: 'Planning' },
-]
+const reportsConfig = defineResourceTab<Report>({
+  key: 'reports',
+  label: 'Reports',
+  icon: FileText,
+  api: '/api/mission-reports',
+  noun: 'report',
+  searchPlaceholder: 'Search report text',
+  describe: (r) => `Report on ${tripTitle(r.trip)}${r.report_date ? ` (${formatDate(r.report_date)})` : ''}`,
+  columns: [
+    { key: 'trip', header: 'Trip', primary: true, cell: (r) => tripTitle(r.trip) },
+    { key: 'report_date', header: 'Date', cell: (r) => formatDate(r.report_date) ?? muted('—') },
+    { key: 'report_text', header: 'Report', className: 'max-w-md truncate', cell: (r) => <span className="line-clamp-3 whitespace-pre-line md:line-clamp-1">{r.report_text}</span> },
+    { key: 'author', header: 'Written by', cell: (r) => (r.author ? memberName(r.author) : muted('—')), hideOnMobile: true },
+  ],
+  fields: [
+    { name: 'trip_id', label: 'Trip', type: 'select', required: true },
+    { name: 'report_date', label: 'Date', type: 'date', width: 'half', help: 'Leave empty for today.' },
+    { name: 'report_text', label: 'Report', type: 'textarea', required: true, maxLength: 20000, placeholder: 'What happened, who was reached, what comes next…' },
+  ],
+  empty: { title: 'No reports yet.', description: 'Write up each trip when the team is back.' },
+})
 
-export default function MissionMinistryPage() {
-  const [searchTerm, setSearchTerm] = useState('')
+const participants: CustomTab = {
+  key: participantsConfig.key,
+  label: participantsConfig.label,
+  icon: participantsConfig.icon,
+  render: (ctx) => <LookupResourceTab ctx={ctx} config={participantsConfig} lookup={tripLookup} />,
+}
 
-  const metrics = [
-    { label: 'Active Members', value: 23, icon: <Users className="w-5 h-5 text-blue-600" /> },
-    { label: 'Trips Organized', value: 4, icon: <Globe className="w-5 h-5 text-green-600" /> },
-    { label: 'Locations', value: 12, icon: <MapPin className="w-5 h-5 text-red-600" /> },
-    { label: 'Budget Allocated', value: '130,000 ETB', icon: <DollarSign className="w-5 h-5 text-amber-600" /> },
-  ]
+const reports: CustomTab = {
+  key: reportsConfig.key,
+  label: reportsConfig.label,
+  icon: reportsConfig.icon,
+  render: (ctx) => <LookupResourceTab ctx={ctx} config={reportsConfig} lookup={tripLookup} />,
+}
 
-  const tabs = [
-    { id: 'trips', label: 'Mission Trips' },
-    { id: 'participants', label: 'Participants' },
-    { id: 'reports', label: 'Reports' },
-    { id: 'finance', label: 'Finance' },
-  ]
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Completed': return 'bg-green-100 text-green-700 hover:bg-green-100/80'
-      case 'Planned': return 'bg-blue-100 text-blue-700 hover:bg-blue-100/80'
-      case 'Ongoing': return 'bg-amber-100 text-amber-700 hover:bg-amber-100/80'
-      default: return 'bg-slate-100 text-slate-700 hover:bg-slate-100/80'
-    }
-  }
-
-  return (
-    <MinistryDashboard
-      name="Mission Ministry"
-      description="Manage outreach, evangelism, and mission activities"
-      icon="🌍"
-      memberCount={23}
-      lastActivity="Last trip - 18 participants"
-      metrics={metrics}
-      tabs={tabs}
-    >
-      <Tabs defaultValue="trips" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="trips">Mission Trips</TabsTrigger>
-          <TabsTrigger value="participants">Participants</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-          <TabsTrigger value="finance">Finance</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="trips" className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search trips..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> Plan New Trip
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {MOCK_TRIPS.map((trip) => (
-              <Card key={trip.id} className="overflow-hidden">
-                <CardHeader className="bg-slate-50/50 pb-3">
-                  <div className="flex justify-between items-start">
-                    <Badge className={getStatusColor(trip.status)} variant="secondary">
-                      {trip.status}
-                    </Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Edit Trip</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">Cancel Trip</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <CardTitle className="mt-2 text-lg">{trip.location}</CardTitle>
-                  <CardDescription className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> {trip.dates}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Leader:</span>
-                      <span className="font-medium">{trip.leader}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Participants:</span>
-                      <span className="font-medium">{trip.participants}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Budget:</span>
-                      <span className="font-medium">{trip.budget.toLocaleString()} ETB</span>
-                    </div>
-                    {trip.outcome && (
-                      <div className="mt-3 p-2 bg-slate-50 rounded text-xs text-slate-600 border border-slate-100">
-                        <strong>Outcome:</strong> {trip.outcome}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="participants" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Trip Participants</CardTitle>
-              <CardDescription>Manage volunteers and assign roles for upcoming missions.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Trip</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_PARTICIPANTS.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell>{p.role}</TableCell>
-                      <TableCell>{p.trip}</TableCell>
-                      <TableCell>
-                        <Badge variant={p.status === 'Confirmed' ? 'default' : 'secondary'}>
-                          {p.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reports" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Mission Reports</CardTitle>
-              <CardDescription>Field reports, impact assessments, and planning documents.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {MOCK_REPORTS.map((report) => (
-                  <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                        <FileText className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">{report.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {report.date} • {report.author}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">Download</Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="finance" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Budget Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total Allocated (2024)</span>
-                    <span className="text-lg font-bold">500,000 ETB</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-green-600">Utilized</span>
-                    <span className="text-lg font-bold text-green-600">130,000 ETB</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-600 w-[26%]"></div>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-right">26% utilized</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Expenses</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex justify-between text-sm">
-                    <span>Transport - Hawassa Trip</span>
-                    <span className="font-medium">15,000 ETB</span>
-                  </li>
-                  <li className="flex justify-between text-sm">
-                    <span>Accommodation - Hawassa</span>
-                    <span className="font-medium">20,000 ETB</span>
-                  </li>
-                  <li className="flex justify-between text-sm">
-                    <span>Outreach Materials</span>
-                    <span className="font-medium">5,000 ETB</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </MinistryDashboard>
-  )
+export default function MissionPage() {
+  return <MinistryWorkspace slug="mission" tabs={[trips, participants, reports]} />
 }

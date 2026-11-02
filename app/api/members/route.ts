@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireRole, dbError } from '@/lib/auth/guards'
 import { STAFF } from '@/lib/auth/roles'
-import { parseBody, pageRange, cleanSearch } from '@/lib/api/validation'
+import { parseBody, pageRange, cleanSearch, parseId } from '@/lib/api/validation'
 import { profileUpdate } from '@/lib/api/schemas'
 import { DIRECTORY_SELECT, directoryFilters, type DirectoryMember } from '@/lib/members/directory'
 
@@ -10,12 +10,18 @@ import { DIRECTORY_SELECT, directoryFilters, type DirectoryMember } from '@/lib/
 //   ?search=  every word must match a name, the email or the phone
 //   ?order=name  alphabetical (member pickers); newest first otherwise
 //   ?limit=&offset=  one page; the number of matching members is in X-Total-Count
+//   ?id=  just that member (a picker showing the person already chosen)
 export async function GET(req: Request) {
   const auth = await requireRole(...STAFF, 'finance')
   if (auth.error) return auth.error
   const { searchParams } = new URL(req.url)
 
   let query = auth.supabase.from('profiles').select(DIRECTORY_SELECT, { count: 'exact' }).eq('is_active', true)
+  if (searchParams.has('id')) {
+    const id = parseId(searchParams.get('id') ?? '')
+    if (!id) return NextResponse.json({ error: 'id must be a member id' }, { status: 400 })
+    query = query.eq('id', id)
+  }
   for (const filter of directoryFilters(cleanSearch(searchParams.get('search')))) query = query.or(filter)
   query = searchParams.get('order') === 'name'
     ? query.order('first_name').order('last_name')

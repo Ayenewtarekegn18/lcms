@@ -1,50 +1,28 @@
-import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { requireRole, dbError } from '@/lib/auth/guards'
+import { collectionRoutes } from '@/lib/api/collection'
+import { ministryMembershipCreate } from '@/lib/api/schemas'
+import { uuid } from '@/lib/api/validation'
 import { STAFF } from '@/lib/auth/roles'
-import { parseBody, pageRange, cleanSearch, opt, uuid } from '@/lib/api/validation'
 
-type MembershipRow = { member?: { first_name?: string | null; last_name?: string | null } | null }
-
-const membership = z
-  .object({ ministry_id: uuid, member_id: uuid, role: opt(z.string().trim().max(100)) })
-  .strict()
-
-export async function GET(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-  const ministryId = uuid.safeParse(searchParams.get('ministry_id'))
-  if (!ministryId.success) return NextResponse.json({ error: 'ministry_id required' }, { status: 400 })
-  const search = cleanSearch(searchParams.get('search'))?.toLowerCase()
-
-  const { data, error } = await auth.supabase
-    .from('ministry_members')
-    .select('*, member:profiles!member_id(id, first_name, last_name, email, phone)')
-    .eq('ministry_id', ministryId.data)
-    .eq('is_active', true)
-    .order('joined_date', { ascending: false })
-    .range(...pageRange(searchParams, 500))
-  if (error) return dbError(error)
-
-  const list = (data ?? []) as MembershipRow[]
-  const filtered = search
-    ? list.filter((r) => `${r.member?.first_name ?? ''} ${r.member?.last_name ?? ''}`.toLowerCase().includes(search))
-    : list
-  return NextResponse.json(filtered)
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, membership)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase
-    .from('ministry_members')
-    .upsert([{ ...body.data, role: body.data.role ?? 'Member', is_active: true }], { onConflict: 'ministry_id,member_id' })
-    .select()
-    .single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// A ministry's members (ministry_members is staff-only under RLS).
+//   GET ?ministry_id= (required) &search= (member's name) &limit=&offset=  → active members with their
+//       names, newest first; the total is in X-Total-Count
+//   POST { ministry_id, member_id, role? = 'member' } → adds the person, or reactivates a removed
+//       membership (and sets its role)
+// Change the role or remove (deactivate): /api/ministry-members/[id].
+const list = collectionRoutes({
+  table: 'ministry_members',
+  roles: { read: STAFF, write: STAFF },
+  create: ministryMembershipCreate,
+  // !inner: the name search below filters the memberships, not just the embedded profile
+  select: '*, member:profiles!member_id!inner(id, first_name, last_name, email, phone)',
+  filters: { ministry_id: uuid },
+  required: ['ministry_id'],
+  where: { is_active: true },
+  search: { columns: ['first_name', 'last_name'], referencedTable: 'member' },
+  order: { column: 'joined_date', ascending: false },
+  defaults: { is_active: true },
+  upsertOn: 'ministry_id,member_id',
+  pageSize: 500,
+})
+export const GET = list.GET
+export const POST = list.POST

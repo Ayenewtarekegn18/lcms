@@ -75,6 +75,8 @@ test.describe('phone', () => {
       await expect(drawer(page)).toBeHidden()
       await menuButton(page).click()
       await expect(drawer(page)).toBeVisible()
+      // Let the slide-in finish: a click while the drawer is still opening can be missed under load.
+      await drawer(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
       const viewport = page.viewportSize()!
       await page.mouse.click(viewport.width - 10, viewport.height / 2) // overlay, right of the drawer
       await expect(drawer(page)).toBeHidden()

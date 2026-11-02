@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { itemRoutes } from '@/lib/api/crud'
-import { spiritualCandidate } from '@/lib/api/schemas'
+import { spiritualCandidateUpdate } from '@/lib/api/schemas'
 import { parseId, notFound } from '@/lib/api/validation'
 import { requireRole, dbError } from '@/lib/auth/guards'
 import { STAFF } from '@/lib/auth/roles'
@@ -24,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 const item = itemRoutes({
   table: 'spiritual_candidates',
   roles: STAFF,
-  update: spiritualCandidate.omit({ member_id: true }).partial(),
+  update: spiritualCandidateUpdate,
   touchUpdatedAt: true,
 })
 export const PATCH = item.PATCH

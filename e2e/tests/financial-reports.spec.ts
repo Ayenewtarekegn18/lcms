@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { formatBirr, toCents, type LedgerPage } from '../../lib/financial/summary'
 import { authFile } from '../helpers'
 
 // A label unique to this run, so the specs don't depend on each other or on existing ledger rows.
-const unique = (what: string) => `e2e ${what} ${test.info().testId}-${Math.random().toString(36).slice(2, 8)}`
+const unique = (what: string) => `e2e ${what} ${test.info().testId}-${randomUUID().slice(0, 8)}`
 
 const ledger = async (page: Page) => {
   const res = await page.request.get('/api/financial')
