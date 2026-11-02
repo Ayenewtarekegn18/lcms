@@ -2,6 +2,9 @@ import { z } from 'zod'
 import { opt, text, uuid, date, time, count } from '@/lib/api/validation'
 import { MINISTRY_ROLES } from '@/lib/ministries/workspace'
 import { CHOIR_SCHEDULE_TYPES, VOICE_PARTS } from '@/lib/ministries/choir'
+import { amount } from '@/lib/api/validation'
+import { SUPPORT_CASE_STATUSES } from '@/lib/ministries/deacons'
+import { BENEFICIARY_STATUSES } from '@/lib/ministries/workers-aid'
 
 // Request schemas shared by several routes. Route files may only export HTTP handlers,
 // so shared schemas live here. Every object is .strict(): unknown keys are rejected.
@@ -141,3 +144,51 @@ const choirScheduleFields = {
 }
 export const choirScheduleCreate = z.object(choirScheduleFields).strict()
 export const choirScheduleUpdate = z.object(choirScheduleFields).partial().strict()
+
+// ── Deacons and Monthly Workers Aid (confidential tables: admin and elder only) ──────────────────────
+
+const careVisitFields = {
+  member_id: uuid,
+  visit_date: date,
+  notes: opt(notes),
+}
+/** POST /api/deacon-care-visits; visitor_id is the signed-in user (set by the route, never sent). */
+export const deaconCareVisitCreate = z.object(careVisitFields).strict()
+/** PATCH /api/deacon-care-visits/[id]: who was visited stays; date and notes can change. */
+export const deaconCareVisitUpdate = z.object(careVisitFields).omit({ member_id: true }).partial().strict()
+
+const supportCaseFields = {
+  member_id: uuid,
+  case_type: opt(z.string().trim().max(100)),
+  description: text(5000),
+  status: opt(z.enum(SUPPORT_CASE_STATUSES)),
+  assigned_deacon_id: opt(uuid),
+}
+export const deaconSupportCaseCreate = z.object(supportCaseFields).strict()
+export const deaconSupportCaseUpdate = z.object(supportCaseFields).omit({ member_id: true }).partial().strict()
+
+const beneficiaryFields = {
+  member_id: uuid,
+  monthly_amount: amount,
+  start_date: opt(date),
+  status: opt(z.enum(BENEFICIARY_STATUSES)),
+  notes: opt(notes),
+}
+/** POST /api/workers-aid-beneficiaries (one row per person: member_id is unique). */
+export const workersAidBeneficiaryCreate = z.object(beneficiaryFields).strict()
+export const workersAidBeneficiaryUpdate = z
+  .object({ ...beneficiaryFields, start_date: date })
+  .omit({ member_id: true })
+  .partial()
+  .strict()
+
+const disbursementFields = {
+  beneficiary_id: uuid,
+  disbursement_date: date,
+  amount,
+  notes: opt(notes),
+}
+export const workersAidDisbursementCreate = z.object(disbursementFields).strict()
+export const workersAidDisbursementUpdate = z.object(disbursementFields).omit({ beneficiary_id: true }).partial().strict()
+/** POST /api/workers-aid-disbursements/months: pay every active beneficiary not yet paid in that date's month. */
+export const workersAidMonthlyRun = z.object({ disbursement_date: date }).strict()

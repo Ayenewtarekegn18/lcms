@@ -1,246 +1,94 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { MinistryDashboard } from '@/components/ministry/ministry-dashboard'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Heart, MapPin, FileText, Plus, Search, MoreHorizontal, Phone, Calendar } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { HandHeart, LifeBuoy } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { MinistryWorkspace } from '@/components/ministry/workspace/MinistryWorkspace'
+import { pastoralOnly } from '@/components/ministry/workspace/pastoral-tab'
+import { defineResourceTab } from '@/components/ministry/workspace/types'
+import { PASTORAL } from '@/lib/auth/roles'
+import type { Tables } from '@/lib/database.types'
+import { churchToday } from '@/lib/financial/summary'
+import { SUPPORT_CASE_STATUSES, SUPPORT_CASE_TYPES, supportCaseStatusLabel } from '@/lib/ministries/deacons'
+import { formatDate, memberName } from '@/lib/members/directory'
 
-// Mock Data
-const MOCK_DEACONS = [
-  { id: 1, name: 'Tewodros Assefa', zone: 'Bole', phone: '0911234567', status: 'Active' },
-  { id: 2, name: 'Mulugeta Haile', zone: 'Sarbet', phone: '0912345678', status: 'Active' },
-  { id: 3, name: 'Aster Bekele', zone: 'Gerji', phone: '0913456789', status: 'On Leave' },
-]
+// Deacons: care visits and support cases. Both tables are confidential (RLS: admin and elder read and
+// write), so the tabs are PASTORAL; other staff see a "confidential" note instead of the lists.
 
-const MOCK_VISITS = [
-  { id: 1, family: 'Family of Ato Kebede', date: '2023-10-22', type: 'Sickness', visitors: 'Tewodros A.', status: 'Completed' },
-  { id: 2, family: 'W/ro Almaz', date: '2023-10-25', type: 'Bereavement', visitors: 'Mulugeta H.', status: 'Scheduled' },
-  { id: 3, family: 'New Member Visit', date: '2023-10-28', type: 'Welcome', visitors: 'Aster B.', status: 'Planned' },
-]
+type Person = { id: string; first_name: string; last_name: string } | null
+type Visit = Tables<'deacon_care_visits'> & { member: Person; visitor: Person }
+type SupportCase = Tables<'deacon_support_cases'> & { member: Person; deacon: Person }
 
-const MOCK_CASES = [
-  { id: 1, title: 'Financial Hardship - Case #102', priority: 'High', assignedTo: 'Tewodros A.', status: 'Open' },
-  { id: 2, title: 'Elderly Care Support', priority: 'Medium', assignedTo: 'Mulugeta H.', status: 'Ongoing' },
-  { id: 3, title: 'Hospital Logistics', priority: 'High', assignedTo: 'Team A', status: 'Resolved' },
-]
+const nameOf = (p: Person, fallback = 'Unknown member') => (p ? memberName(p) : fallback)
+const muted = (text: string) => <span className="text-muted-foreground">{text}</span>
+
+const careVisits = defineResourceTab<Visit>({
+  key: 'care-visits',
+  label: 'Care visits',
+  icon: HandHeart,
+  api: '/api/deacon-care-visits',
+  noun: 'care visit',
+  write: PASTORAL,
+  searchPlaceholder: 'Search visits by member name',
+  describe: (v) => `Visit to ${nameOf(v.member)} on ${formatDate(v.visit_date)}`,
+  columns: [
+    { key: 'member', header: 'Member', primary: true, cell: (v) => nameOf(v.member) },
+    { key: 'visit_date', header: 'Visited', cell: (v) => formatDate(v.visit_date) },
+    { key: 'visitor', header: 'Visited by', cell: (v) => nameOf(v.visitor, 'Unknown') },
+    { key: 'notes', header: 'Notes', className: 'max-w-xs truncate', cell: (v) => v.notes || muted('—') },
+  ],
+  fields: [
+    { name: 'member_id', label: 'Member visited', type: 'member', required: true, createOnly: true },
+    { name: 'visit_date', label: 'Visit date', type: 'date', required: true, width: 'half', defaultValue: churchToday() },
+    { name: 'notes', label: 'Notes', type: 'textarea', help: 'Confidential: only administrators and elders can read these.' },
+  ],
+  empty: { title: 'No care visits recorded yet.', description: 'Record home and hospital visits; you are saved as the visitor.' },
+})
+
+const statusBadge = (c: SupportCase) => {
+  const status = c.status ?? 'open'
+  const variant = status === 'closed' ? 'outline' : status === 'in_progress' ? 'secondary' : 'default'
+  return <Badge variant={variant}>{supportCaseStatusLabel(status)}</Badge>
+}
+
+const supportCases = defineResourceTab<SupportCase>({
+  key: 'support-cases',
+  label: 'Support cases',
+  icon: LifeBuoy,
+  api: '/api/deacon-support-cases',
+  noun: 'support case',
+  write: PASTORAL,
+  searchPlaceholder: 'Search cases by member name',
+  describe: (c) => `${c.case_type ? `${c.case_type} case` : 'Case'} for ${nameOf(c.member)}`,
+  columns: [
+    { key: 'member', header: 'Member', primary: true, cell: (c) => nameOf(c.member) },
+    { key: 'case_type', header: 'Type', cell: (c) => c.case_type || muted('—') },
+    { key: 'description', header: 'Description', className: 'max-w-xs truncate' },
+    { key: 'status', header: 'Status', cell: statusBadge },
+    { key: 'deacon', header: 'Assigned to', cell: (c) => (c.deacon ? memberName(c.deacon) : muted('Not assigned')) },
+    { key: 'created_at', header: 'Opened', hideOnMobile: true, cell: (c) => formatDate(c.created_at) ?? muted('—') },
+  ],
+  fields: [
+    { name: 'member_id', label: 'Member', type: 'member', required: true, createOnly: true },
+    { name: 'case_type', label: 'Type', type: 'select', options: SUPPORT_CASE_TYPES, width: 'half' },
+    {
+      name: 'status',
+      label: 'Status',
+      type: 'select',
+      options: SUPPORT_CASE_STATUSES.map((s) => ({ value: s, label: supportCaseStatusLabel(s) })),
+      defaultValue: 'open',
+      width: 'half',
+    },
+    { name: 'description', label: 'Description', type: 'textarea', required: true },
+    {
+      name: 'assigned_deacon_id',
+      label: 'Assigned deacon',
+      type: 'member',
+      help: 'Optional. When editing, search only to change the deacon; the current one stays otherwise.',
+    },
+  ],
+  empty: { title: 'No support cases yet.', description: 'Open a case when a member needs practical help, and assign a deacon.' },
+})
 
 export default function DeaconsPage() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('deacons')
-
-  const metrics = [
-    { label: 'Active Deacons', value: 15, icon: <Users className="w-5 h-5" /> },
-    { label: 'Care Visits (Oct)', value: 34, icon: <Heart className="w-5 h-5" /> },
-    { label: 'Active Cases', value: 12, icon: <MapPin className="w-5 h-5" /> },
-    { label: 'Pending Reports', value: 3, icon: <FileText className="w-5 h-5" /> },
-  ]
-
-  const tabs = [
-    { id: 'deacons', label: 'Deacons' },
-    { id: 'visits', label: 'Care Visits' },
-    { id: 'cases', label: 'Support Cases' },
-    { id: 'reports', label: 'Reports' },
-  ]
-
-  return (
-    <MinistryDashboard
-      name="Deacons Ministry"
-      description="Pastoral care, logistics, and member support services"
-      icon="🙌"
-      memberCount={15}
-      lastActivity="Pastoral visit last Sunday"
-      metrics={metrics}
-      tabs={tabs}
-    >
-      <Tabs defaultValue="deacons" className="space-y-4" onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="deacons">Deacons</TabsTrigger>
-          <TabsTrigger value="visits">Care Visits</TabsTrigger>
-          <TabsTrigger value="cases">Support Cases</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-        </TabsList>
-
-        {/* Deacons Tab */}
-        <TabsContent value="deacons" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search deacons..."
-                  className="pl-8 w-[250px]"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            <Link href="/dashboard/members/register">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Plus className="mr-2 h-4 w-4" /> Add Deacon
-              </Button>
-            </Link>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Deacons Registry</CardTitle>
-              <CardDescription>Manage deacons and their assigned zones.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Assigned Zone</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_DEACONS.map((deacon) => (
-                    <TableRow key={deacon.id}>
-                      <TableCell className="font-medium">{deacon.name}</TableCell>
-                      <TableCell>{deacon.zone}</TableCell>
-                      <TableCell className="flex items-center gap-2">
-                         <Phone className="h-3 w-3 text-muted-foreground"/> {deacon.phone}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={deacon.status === 'Active' ? 'default' : 'secondary'}>
-                          {deacon.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Profile</DropdownMenuItem>
-                            <DropdownMenuItem>Assign Zone</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">Deactivate</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Visits Tab */}
-        <TabsContent value="visits" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-               <Input placeholder="Search visits..." className="w-[300px]" />
-            </div>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Log Visit
-            </Button>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Care Visit Log</CardTitle>
-              <CardDescription>Track pastoral visits to members.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Family/Member</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Visitors</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_VISITS.map((visit) => (
-                    <TableRow key={visit.id}>
-                      <TableCell className="font-medium">{visit.family}</TableCell>
-                      <TableCell>{visit.type}</TableCell>
-                      <TableCell>{visit.date}</TableCell>
-                      <TableCell>{visit.visitors}</TableCell>
-                      <TableCell>
-                         <Badge variant={visit.status === 'Completed' ? 'default' : 'outline'}>{visit.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                           <MoreHorizontal className="h-4 w-4"/>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Cases Tab */}
-        <TabsContent value="cases" className="space-y-4">
-           <div className="flex justify-between items-center mb-4">
-             <h3 className="text-lg font-medium">Ongoing Support Cases</h3>
-             <Button variant="outline">View Closed Cases</Button>
-           </div>
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {MOCK_CASES.map((c) => (
-                <Card key={c.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                       <Badge variant={c.priority === 'High' ? 'destructive' : 'secondary'}>{c.priority}</Badge>
-                       <Badge variant="outline">{c.status}</Badge>
-                    </div>
-                    <CardTitle className="text-base mt-2">{c.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                     <p className="text-sm text-muted-foreground mb-4">Assigned to: {c.assignedTo}</p>
-                     <Button size="sm" className="w-full">View Details</Button>
-                  </CardContent>
-                </Card>
-              ))}
-           </div>
-        </TabsContent>
-
-        {/* Reports Tab */}
-        <TabsContent value="reports" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ministry Reports</CardTitle>
-              <CardDescription>Monthly reports and care statistics.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                <FileText className="h-12 w-12 mb-4 opacity-20" />
-                <p>No reports generated for this month yet.</p>
-                <Button variant="secondary" className="mt-4">Generate Report</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </MinistryDashboard>
-  )
+  return <MinistryWorkspace slug="deacons" tabs={[pastoralOnly(careVisits), pastoralOnly(supportCases)]} />
 }
