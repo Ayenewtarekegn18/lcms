@@ -141,3 +141,46 @@ const choirScheduleFields = {
 }
 export const choirScheduleCreate = z.object(choirScheduleFields).strict()
 export const choirScheduleUpdate = z.object(choirScheduleFields).partial().strict()
+
+// ── Administration and Charity (ministry workspaces) ─────────────────────────────────────────────
+import { amount } from '@/lib/api/validation'
+import { TASK_STATUSES } from '@/lib/ministries/administration'
+import { AID_STATUSES } from '@/lib/ministries/charity'
+
+/** Birr amounts in DECIMAL(10,2) columns. */
+const birr = amount.max(99_999_999.99)
+
+const adminTaskFields = {
+  title: text(200),
+  assigned_to_id: opt(uuid),
+  due_date: opt(date),
+  status: z.enum(TASK_STATUSES).optional(),
+  notes: opt(notes),
+}
+/** POST /api/admin-tasks */
+export const adminTaskCreate = z.object(adminTaskFields).strict()
+/** PATCH /api/admin-tasks/[id] */
+export const adminTaskUpdate = z.object(adminTaskFields).partial().strict()
+
+const charityAidRequestFields = {
+  member_id: uuid,
+  request_date: opt(date),
+  amount_requested: opt(birr),
+  reason: opt(notes),
+  status: z.enum(AID_STATUSES).optional(),
+}
+/** POST /api/charity-aid-requests; reviewed_by_id and reviewed_at are set by the server, never sent. */
+export const charityAidRequestCreate = z.object(charityAidRequestFields).strict()
+/** PATCH /api/charity-aid-requests/[id]: the member can't change, the rest can. */
+export const charityAidRequestUpdate = z.object(charityAidRequestFields).omit({ member_id: true }).partial().strict()
+
+const charityDistributionFields = {
+  request_id: uuid,
+  distributed_date: date,
+  amount: birr,
+  notes: opt(notes),
+}
+/** POST /api/charity-distributions (the request must be approved or paid). */
+export const charityDistributionCreate = z.object(charityDistributionFields).strict()
+/** PATCH /api/charity-distributions/[id]: the request can't change, the rest can. */
+export const charityDistributionUpdate = z.object(charityDistributionFields).omit({ request_id: true }).partial().strict()
