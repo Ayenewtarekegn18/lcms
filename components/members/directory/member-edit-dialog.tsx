@@ -20,7 +20,7 @@ const FIELDS: { k: EditField; label: string; type?: string; placeholder?: string
   { k: 'address', label: 'Address', wide: true },
 ]
 
-const inputClass = 'mt-1 bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+const inputClass = 'mt-1 bg-card border-input text-foreground placeholder:text-muted-foreground'
 
 interface MemberEditDialogProps {
   member: DirectoryMember
@@ -74,11 +74,11 @@ export function MemberEditDialog({ member, onClose, onSaved }: MemberEditDialogP
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !saving) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card">
         <form onSubmit={save} noValidate>
           <DialogHeader>
-            <DialogTitle className="text-slate-900">Edit member</DialogTitle>
-            <DialogDescription className="text-slate-600">
+            <DialogTitle className="text-foreground">Edit member</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               {memberName(member)}
               {member.member_details ? ` · ${member.member_details.member_number}` : ''}
             </DialogDescription>
@@ -99,7 +99,7 @@ export function MemberEditDialog({ member, onClose, onSaved }: MemberEditDialogP
               }
               return (
                 <div key={f.k} className={f.wide ? 'sm:col-span-2' : undefined}>
-                  <Label htmlFor={id} className="text-slate-700">{f.label}</Label>
+                  <Label htmlFor={id} className="text-foreground">{f.label}</Label>
                   {f.wide ? (
                     <Textarea {...common} rows={2} onChange={(e) => update(f.k, e.target.value)} />
                   ) : (
@@ -116,7 +116,7 @@ export function MemberEditDialog({ member, onClose, onSaved }: MemberEditDialogP
               )
             })}
           </div>
-          <p className="text-xs text-slate-500">Family and emergency details from the registration form can&apos;t be changed here yet.</p>
+          <p className="text-xs text-muted-foreground">Family and emergency details from the registration form can&apos;t be changed here yet.</p>
 
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>

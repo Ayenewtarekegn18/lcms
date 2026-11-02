@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { CHURCH_NAME_AM, CHURCH_NAME_EN, LOGO_MARK } from '@/lib/brand'
 
 export default function LoginPage() {
   const { t } = useTranslation()
@@ -87,23 +89,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="fade-in-up">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-black mb-2">{t('Auth.title')}</h1>
-            <p className="text-slate-600 text-lg">{t('Auth.subtitle')}</p>
-          </div>
+    <div className="flex min-h-dvh flex-col bg-background">
+      <header className="border-b-[3px] border-[#0C1B3F] bg-primary text-primary-foreground">
+        <div className="mx-auto flex max-w-md flex-col items-center px-4 pb-8 pt-10 text-center">
+          <Image src={LOGO_MARK.white} alt="" width={LOGO_MARK.width} height={LOGO_MARK.height} priority className="h-16 w-auto" />
+          <p className="mt-4 font-display text-2xl font-bold leading-snug" lang="am">{CHURCH_NAME_AM}</p>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#C3D4F7]">{CHURCH_NAME_EN} · {t('Auth.subtitle')}</p>
+        </div>
+      </header>
 
-          <div className="bg-white rounded-lg p-8 shadow-lg border border-slate-200">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-semibold text-black mb-2">{t('Auth.welcomeBack')}</h2>
-              <p className="text-slate-600">{t('Auth.signInPrompt')}</p>
+      <main className="flex flex-1 justify-center px-4 py-8">
+        <div className="fade-in-up w-full max-w-md">
+          <div className="rounded-lg border border-border bg-card p-6 shadow-[0_1px_2px_rgba(12,27,63,.05),0_10px_26px_-14px_rgba(12,27,63,.22)] sm:p-8">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-foreground">{t('Auth.welcomeBack')}</h1>
+              <p className="mt-1 text-muted-foreground">{t('Auth.signInPrompt')}</p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-black font-medium">{t('Auth.emailLabel')}</Label>
+                <Label htmlFor="email">{t('Auth.emailLabel')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -112,12 +117,12 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="form-input bg-white border-slate-300 text-black placeholder-slate-400 focus:border-[#3E50B5] h-12 rounded-lg"
+                  className="h-12"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-black font-medium">{t('Auth.passwordLabel')}</Label>
+                <Label htmlFor="password">{t('Auth.passwordLabel')}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -126,19 +131,19 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="form-input bg-white border-slate-300 text-black placeholder-slate-400 focus:border-[#3E50B5] h-12 rounded-lg"
+                  className="h-12"
                 />
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                <div role="alert" className="whitespace-pre-line rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                   {error}
                 </div>
               )}
 
               <Button
                 type="submit"
-                className="login-button w-full h-12 text-white font-semibold rounded-lg"
+                className="h-12 w-full font-semibold"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -156,21 +161,19 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <span className="text-slate-600 text-sm">{t('Auth.noAccount')}</span>{' '}
+              <span className="text-muted-foreground text-sm">{t('Auth.noAccount')}</span>{' '}
               <Link
                 href="/auth/sign-up"
-                className="text-black font-semibold hover:text-slate-700 transition-colors"
+                className="font-semibold text-primary hover:underline"
               >
                 {t('Auth.createOne')}
               </Link>
             </div>
           </div>
 
-          <div className="text-center mt-8">
-            <p className="text-slate-500 text-sm">{t('Auth.footer')}</p>
-          </div>
+          <p className="mt-8 text-center text-sm text-muted-foreground">{t('Auth.footer')}</p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

@@ -9,10 +9,10 @@ export default async function MembersPage() {
   const can = (roles: readonly Role[]) => role !== null && roles.includes(role)
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-muted p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Members</h1>
-        <p className="text-slate-500 mt-2">Manage church members and their information</p>
+        <h1 className="text-4xl font-bold text-foreground">Members</h1>
+        <p className="text-muted-foreground mt-2">Manage church members and their information</p>
       </div>
       <MembersDirectory
         canEdit={can(MEMBER_EDITORS)}

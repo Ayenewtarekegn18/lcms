@@ -104,7 +104,7 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
     const cells = []
     const leading = new Date(m.getFullYear(), m.getMonth(), 1).getDay()
     for (let i = 0; i < leading; i++) {
-      cells.push(<div key={`empty-${i}`} className="h-24 bg-slate-50 border border-slate-200 rounded" />)
+      cells.push(<div key={`empty-${i}`} className="h-24 bg-muted border border-border rounded" />)
     }
     const days = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate()
     for (let day = 1; day <= days; day++) {
@@ -121,13 +121,13 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
           aria-label={`${formatDayLabel(date)}${list.length ? `, ${list.length} event${list.length > 1 ? 's' : ''}` : ''}`}
           onClick={() => setSelected(key)}
           className={cn(
-            'h-24 min-w-0 overflow-hidden border rounded bg-white hover:bg-slate-50 p-2 text-left align-top transition-colors flex flex-col',
-            isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-slate-200',
+            'h-24 min-w-0 overflow-hidden border rounded bg-card hover:bg-muted p-2 text-left align-top transition-colors flex flex-col',
+            isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-border',
           )}
         >
           <span className={cn('text-sm font-semibold', key === todayKey
             ? 'inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground'
-            : 'text-slate-900')}>
+            : 'text-foreground')}>
             {day}
           </span>
           <span className="mt-1 block w-full space-y-0.5">
@@ -136,7 +136,7 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
                 {event.title}
               </span>
             ))}
-            {list.length > 2 && <span className="block text-xs text-slate-500 px-2">+{list.length - 2} more</span>}
+            {list.length > 2 && <span className="block text-xs text-muted-foreground px-2">+{list.length - 2} more</span>}
           </span>
         </button>,
       )
@@ -145,11 +145,11 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
+    <div className="min-h-screen bg-muted p-4 sm:p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900">Calendar & Events</h1>
-          <p className="text-slate-500 mt-2">View the calendar and upcoming events</p>
+          <h1 className="text-4xl font-bold text-foreground">Calendar & Events</h1>
+          <p className="text-muted-foreground mt-2">View the calendar and upcoming events</p>
         </div>
         {canEdit && (
           <div className="flex flex-wrap gap-2">
@@ -167,10 +167,10 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      <Card className="bg-white border-slate-200 mb-8">
+      <Card className="bg-card border-border mb-8">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-slate-900" aria-live="polite">{month ? formatMonth(month) : ' '}</CardTitle>
+            <CardTitle className="text-foreground" aria-live="polite">{month ? formatMonth(month) : ' '}</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled={!month}
                 onClick={() => month && goTo(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
@@ -190,16 +190,16 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
           {month && (
             <div className="grid grid-cols-7 gap-2 mb-2" aria-hidden>
               {weekdayNames().map((name) => (
-                <div key={name} className="text-center font-semibold text-sm text-slate-600 py-2">{name}</div>
+                <div key={name} className="text-center font-semibold text-sm text-muted-foreground py-2">{name}</div>
               ))}
             </div>
           )}
           <div className="grid grid-cols-7 gap-2">
             {!month || loadingMonth ? (
-              <div className="col-span-7 py-12 text-center text-slate-500">Loading calendar...</div>
+              <div className="col-span-7 py-12 text-center text-muted-foreground">Loading calendar...</div>
             ) : monthFailed ? (
               <div className="col-span-7 py-12 text-center">
-                <p className="text-slate-600">The calendar could not be loaded.</p>
+                <p className="text-muted-foreground">The calendar could not be loaded.</p>
                 <Button variant="outline" size="sm" className="mt-4" onClick={() => loadMonth(month)}>Try again</Button>
               </div>
             ) : (
@@ -210,11 +210,11 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
       </Card>
 
       {month && selected && !loadingMonth && !monthFailed && (
-        <Card className="bg-white border-slate-200 mb-8" data-testid="selected-day">
+        <Card className="bg-card border-border mb-8" data-testid="selected-day">
           <CardHeader>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <CardTitle className="text-slate-900">{formatDayLabel(fromDayKey(selected))}</CardTitle>
+                <CardTitle className="text-foreground">{formatDayLabel(fromDayKey(selected))}</CardTitle>
                 <CardDescription>
                   {selectedEvents.length === 0 ? 'No events on this day' : `${selectedEvents.length} event${selectedEvents.length > 1 ? 's' : ''}`}
                 </CardDescription>
@@ -237,21 +237,21 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
         </Card>
       )}
 
-      <Card className="bg-white border-slate-200">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-slate-900">Upcoming Events</CardTitle>
+          <CardTitle className="text-foreground">Upcoming Events</CardTitle>
           <CardDescription>Today and the next scheduled events</CardDescription>
         </CardHeader>
         <CardContent>
           {loadingUpcoming ? (
-            <p className="text-slate-500 py-6 text-center">Loading upcoming events...</p>
+            <p className="text-muted-foreground py-6 text-center">Loading upcoming events...</p>
           ) : upcomingFailed ? (
             <div className="py-6 text-center">
-              <p className="text-slate-600">The upcoming events could not be loaded.</p>
+              <p className="text-muted-foreground">The upcoming events could not be loaded.</p>
               <Button variant="outline" size="sm" className="mt-4" onClick={loadUpcoming}>Try again</Button>
             </div>
           ) : upcoming.length === 0 ? (
-            <p className="text-slate-500 py-6 text-center">
+            <p className="text-muted-foreground py-6 text-center">
               No upcoming events.{canEdit ? ' Click Add Event to create one.' : ''}
             </p>
           ) : (
@@ -271,16 +271,16 @@ export function CalendarView({ canEdit }: { canEdit: boolean }) {
 
 function EventSummary({ event }: { event: EventItem }) {
   return (
-    <div className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
+    <div className="border border-border rounded-lg p-4 hover:bg-muted transition-colors">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-semibold text-slate-900">{event.title}</h3>
+        <h3 className="font-semibold text-foreground">{event.title}</h3>
         {event.ministry && (
           <span className="inline-flex shrink-0 items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
             {event.ministry.name}
           </span>
         )}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-600">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 shrink-0" />
           {formatEventDate(event.start_date)}

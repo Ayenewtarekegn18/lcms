@@ -72,7 +72,7 @@ function SheetContent({
         <SheetPrimitive.Close
           data-slot="sheet-close"
           aria-label={closeLabel}
-          className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring absolute top-2 right-2 inline-flex size-11 items-center justify-center rounded-md outline-none transition-colors focus-visible:ring-2 disabled:pointer-events-none"
+          className="text-current opacity-80 hover:opacity-100 hover:bg-current/10 focus-visible:ring-ring absolute top-2 right-2 inline-flex size-11 items-center justify-center rounded-md outline-none transition-colors focus-visible:ring-2 disabled:pointer-events-none"
         >
           <XIcon className="size-5" aria-hidden="true" />
         </SheetPrimitive.Close>

@@ -8,8 +8,8 @@ import { activeMinistries, formatDate, memberName, type DirectoryMember } from '
 function Item({ label, value, wide }: { label: string; value: string | null | undefined; wide?: boolean }) {
   return (
     <div className={wide ? 'col-span-2' : undefined}>
-      <p className="text-xs text-slate-500 mb-1">{label}</p>
-      <p className="text-sm font-medium text-slate-900">{value || 'Not provided'}</p>
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="text-sm font-medium text-foreground">{value || 'Not provided'}</p>
     </div>
   )
 }
@@ -29,17 +29,17 @@ export function MemberDetailDialog({ member, canEdit, onClose, onEdit }: MemberD
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card">
         <DialogHeader>
-          <DialogTitle className="text-slate-900 text-2xl">{memberName(member)}</DialogTitle>
-          <DialogDescription className="text-slate-600">
+          <DialogTitle className="text-foreground text-2xl">{memberName(member)}</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             {details ? `Member number ${details.member_number}` : 'Not in the member register yet'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           <section className="border-b pb-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Basic Information</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Basic Information</h3>
             <div className="grid grid-cols-2 gap-6">
               <Item label="Email" value={member.email} />
               <Item label="Phone" value={member.phone} />
@@ -51,7 +51,7 @@ export function MemberDetailDialog({ member, canEdit, onClose, onEdit }: MemberD
 
           {details && (details.spouse_name || children) && (
             <section className="border-b pb-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Heart className="w-5 h-5" aria-hidden />
                 Family Information
               </h3>
@@ -64,7 +64,7 @@ export function MemberDetailDialog({ member, canEdit, onClose, onEdit }: MemberD
 
           {details && (details.emergency_name || details.emergency_phone) && (
             <section>
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Emergency Contact</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Emergency Contact</h3>
               <div className="grid grid-cols-2 gap-6">
                 <Item label="Contact Name" value={emergency} />
                 <Item label="Contact Phone" value={details.emergency_phone} />

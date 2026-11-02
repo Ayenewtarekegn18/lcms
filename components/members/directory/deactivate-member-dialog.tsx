@@ -37,10 +37,10 @@ export function DeactivateMemberDialog({ member, onClose, onDeactivated }: Deact
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !working) onClose() }}>
-      <DialogContent className="sm:max-w-md bg-white">
+      <DialogContent className="sm:max-w-md bg-card">
         <DialogHeader>
-          <DialogTitle className="text-slate-900">Deactivate {name}?</DialogTitle>
-          <DialogDescription className="text-slate-600">
+          <DialogTitle className="text-foreground">Deactivate {name}?</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             They will no longer appear in the members directory, and their account, if they have one, loses
             access to the app. Their records and history are kept.
           </DialogDescription>

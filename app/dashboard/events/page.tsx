@@ -99,10 +99,10 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
+    <div className="min-h-screen bg-muted p-4 sm:p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Events</h1>
-        <p className="text-slate-500 mt-2">Manage and schedule church events</p>
+        <h1 className="text-4xl font-bold text-foreground">Events</h1>
+        <p className="text-muted-foreground mt-2">Manage and schedule church events</p>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -120,23 +120,23 @@ export default function EventsPage() {
 
       {loading ? (
         <div className="text-center py-12">
-          <p className="text-slate-500">Loading events...</p>
+          <p className="text-muted-foreground">Loading events...</p>
         </div>
       ) : loadFailed ? (
-        <Card className="bg-white border-slate-200">
+        <Card className="bg-card border-border">
           <CardContent className="py-12 text-center">
-            <p className="text-slate-600">The events could not be loaded.</p>
+            <p className="text-muted-foreground">The events could not be loaded.</p>
             <Button variant="outline" size="sm" className="mt-4" onClick={load}>Try again</Button>
           </CardContent>
         </Card>
       ) : (
         <>
           <section className="mb-12" aria-labelledby="upcoming-heading">
-            <h2 id="upcoming-heading" className="text-xl font-bold text-slate-900 mb-6">Upcoming Events</h2>
+            <h2 id="upcoming-heading" className="text-xl font-bold text-foreground mb-6">Upcoming Events</h2>
             {upcoming.length === 0 ? (
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardContent className="py-12">
-                  <p className="text-center text-slate-500">No upcoming events scheduled</p>
+                  <p className="text-center text-muted-foreground">No upcoming events scheduled</p>
                 </CardContent>
               </Card>
             ) : (
@@ -146,7 +146,7 @@ export default function EventsPage() {
 
           {past.length > 0 && (
             <section aria-labelledby="past-heading">
-              <h2 id="past-heading" className="text-xl font-bold text-slate-900 mb-6">Past Events</h2>
+              <h2 id="past-heading" className="text-xl font-bold text-foreground mb-6">Past Events</h2>
               <EventsTable label="Past events" events={past} onEdit={openEdit} onDelete={setDeleting} />
               {hasMorePast && (
                 <div className="mt-4 text-center">
@@ -194,37 +194,37 @@ function EventsTable({ label, events, onEdit, onDelete }: {
   onDelete: (event: EventItem) => void
 }) {
   return (
-    <Card className="bg-white border-slate-200">
+    <Card className="bg-card border-border">
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full" aria-label={label}>
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr className="border-b border-border bg-muted">
                 {['Event', 'Date', 'Time', 'Ministry', 'Location'].map((h) => (
-                  <th key={h} className="px-6 py-3 text-left text-sm font-semibold text-slate-900">{h}</th>
+                  <th key={h} className="px-6 py-3 text-left text-sm font-semibold text-foreground">{h}</th>
                 ))}
-                <th className="px-6 py-3 text-center text-sm font-semibold text-slate-900">Actions</th>
+                <th className="px-6 py-3 text-center text-sm font-semibold text-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {events.map((event) => (
-                <tr key={event.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                <tr key={event.id} className="border-b border-border hover:bg-muted transition-colors">
                   <td className="px-6 py-4 text-sm">
-                    <div className="font-medium text-slate-900">{event.title}</div>
-                    <div className="text-xs text-slate-500">{event.event_type}</div>
+                    <div className="font-medium text-foreground">{event.title}</div>
+                    <div className="text-xs text-muted-foreground">{event.event_type}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">{formatEventDate(event.start_date)}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">{formatEventTime(event.start_date, event.end_date)}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">{formatEventDate(event.start_date)}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">{formatEventTime(event.start_date, event.end_date)}</td>
                   <td className="px-6 py-4 text-sm">
                     {event.ministry ? (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {event.ministry.name}
                       </span>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{event.location || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{event.location || '—'}</td>
                   <td className="px-6 py-4 text-sm text-center">
                     <div className="flex gap-2 justify-center">
                       <button type="button" onClick={() => onEdit(event)} aria-label={`Edit ${event.title}`}

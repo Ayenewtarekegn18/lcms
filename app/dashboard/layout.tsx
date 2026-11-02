@@ -22,13 +22,13 @@ export default async function DashboardLayout({
   // Desktop (md+): fixed sidebar, content offset by its width. Phones: a sticky top bar inside
   // <main> opens the same navigation in a drawer; scroll-padding keeps focused fields below the bar.
   return (
-    <div className="flex h-dvh bg-slate-50">
+    <div className="flex h-dvh bg-background">
       <SkipLink />
       <Sidebar user={user} role={role ?? 'member'} />
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex-1 min-w-0 overflow-auto md:ml-64 bg-slate-50 scroll-pt-14 md:scroll-pt-0 focus:outline-none"
+        className="flex-1 min-w-0 overflow-auto md:ml-64 bg-background scroll-pt-14 md:scroll-pt-0 focus:outline-none"
       >
         <MobileNav user={user} role={role ?? 'member'} />
         {children}

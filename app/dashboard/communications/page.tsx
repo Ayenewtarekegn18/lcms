@@ -107,10 +107,10 @@ export default function CommunicationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-muted p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Communications</h1>
-        <p className="text-slate-500 mt-2">Send announcements and manage member communications</p>
+        <h1 className="text-4xl font-bold text-foreground">Communications</h1>
+        <p className="text-muted-foreground mt-2">Send announcements and manage member communications</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
@@ -124,30 +124,30 @@ export default function CommunicationsPage() {
           <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-slate-600">Total Announcements</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Announcements</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{announcements.length}</div>
+                  <div className="text-3xl font-bold text-foreground">{announcements.length}</div>
                 </CardContent>
               </Card>
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-slate-600">Total Views</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Views</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">
+                  <div className="text-3xl font-bold text-foreground">
                     {announcements.reduce((sum, a) => sum + a.views, 0).toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-slate-600">This Week</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">This Week</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">
+                  <div className="text-3xl font-bold text-foreground">
                     {announcements.filter((a) => {
                       const date = new Date(a.date)
                       const weekAgo = new Date()
@@ -157,12 +157,12 @@ export default function CommunicationsPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-slate-600">Published</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Published</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">
+                  <div className="text-3xl font-bold text-foreground">
                     {announcements.filter((a) => a.status === 'Published').length}
                   </div>
                 </CardContent>
@@ -170,11 +170,11 @@ export default function CommunicationsPage() {
             </div>
 
             {/* Announcements List */}
-            <Card className="bg-white border-slate-200">
+            <Card className="bg-card border-border">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-slate-900">Announcements</CardTitle>
+                    <CardTitle className="text-foreground">Announcements</CardTitle>
                     <CardDescription>Recent announcements sent to members</CardDescription>
                   </div>
                   <Button
@@ -189,7 +189,7 @@ export default function CommunicationsPage() {
               <CardContent>
                 <div className="mb-6">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Search announcements..."
                       value={search}
@@ -201,19 +201,19 @@ export default function CommunicationsPage() {
 
                 <div className="space-y-4">
                   {loading ? (
-                    <p className="text-slate-500 py-8 text-center">Loading announcements...</p>
+                    <p className="text-muted-foreground py-8 text-center">Loading announcements...</p>
                   ) : filteredAnnouncements.length === 0 ? (
-                    <p className="text-slate-500 py-8 text-center">No announcements yet. Compose one to get started.</p>
+                    <p className="text-muted-foreground py-8 text-center">No announcements yet. Compose one to get started.</p>
                   ) : (
                   filteredAnnouncements.map((announcement) => (
                     <div
                       key={announcement.id}
-                      className="border border-slate-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                      className="border border-border rounded-lg p-6 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-slate-900">{announcement.title}</h3>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
+                          <h3 className="text-lg font-semibold text-foreground">{announcement.title}</h3>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                             <span>By {announcement.author}</span>
                             <span>•</span>
                             <span>{new Date(announcement.date).toLocaleDateString()}</span>
@@ -226,10 +226,10 @@ export default function CommunicationsPage() {
                         </span>
                       </div>
 
-                      <p className="text-slate-600 mb-4 line-clamp-2">{announcement.content}</p>
+                      <p className="text-muted-foreground mb-4 line-clamp-2">{announcement.content}</p>
 
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-6 text-sm text-slate-600">
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Eye className="w-4 h-4" />
                             {announcement.views} views
@@ -258,9 +258,9 @@ export default function CommunicationsPage() {
         </TabsContent>
 
         <TabsContent value="compose">
-          <Card className="bg-white border-slate-200">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-slate-900">Compose Announcement</CardTitle>
+              <CardTitle className="text-foreground">Compose Announcement</CardTitle>
               <CardDescription>Create and send an announcement to members</CardDescription>
             </CardHeader>
             <CardContent>
@@ -272,7 +272,7 @@ export default function CommunicationsPage() {
                 className="space-y-6"
               >
                 <div>
-                  <label className="block text-sm font-medium text-slate-900 mb-2">Title</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Title</label>
                   <Input
                     placeholder="Announcement title"
                     value={composedMessage.title}
@@ -284,21 +284,21 @@ export default function CommunicationsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-900 mb-2">Content</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Content</label>
                   <textarea
                     placeholder="Write your announcement here..."
                     value={composedMessage.content}
                     onChange={(e) =>
                       setComposedMessage({ ...composedMessage, content: e.target.value })
                     }
-                    className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 resize-none"
+                    className="w-full p-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                     rows={8}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Send To
                     </label>
                     <select
@@ -309,7 +309,7 @@ export default function CommunicationsPage() {
                           recipients: e.target.value,
                         })
                       }
-                      className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      className="w-full p-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <option>All Members</option>
                       <option>Youth Ministry</option>
@@ -321,7 +321,7 @@ export default function CommunicationsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Channels
                     </label>
                     <div className="flex gap-4">
@@ -345,7 +345,7 @@ export default function CommunicationsPage() {
                             }}
                             className="rounded"
                           />
-                          <span className="text-sm text-slate-600">{channel}</span>
+                          <span className="text-sm text-muted-foreground">{channel}</span>
                         </label>
                       ))}
                     </div>
@@ -364,25 +364,25 @@ export default function CommunicationsPage() {
         </TabsContent>
 
         <TabsContent value="templates">
-          <Card className="bg-white border-slate-200">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-slate-900">Message Templates</CardTitle>
+              <CardTitle className="text-foreground">Message Templates</CardTitle>
               <CardDescription>Saved templates for recurring announcements. Use a template to fill the Compose form.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {templates.length === 0 ? (
-                  <p className="text-slate-500 col-span-2 py-8 text-center">No templates saved yet. Publish an announcement and save it as a template later, or add one via API.</p>
+                  <p className="text-muted-foreground col-span-2 py-8 text-center">No templates saved yet. Publish an announcement and save it as a template later, or add one via API.</p>
                 ) : (
                   templates.map((template) => (
-                    <Card key={template.id} className="bg-slate-50 border-slate-200 hover:shadow-md transition-shadow">
+                    <Card key={template.id} className="bg-muted border-border hover:shadow-md transition-shadow">
                       <CardContent className="p-6">
-                        <h3 className="font-semibold text-slate-900 mb-2">{template.name}</h3>
-                        <p className="text-sm text-slate-600 mb-4 line-clamp-2">{template.body}</p>
+                        <h3 className="font-semibold text-foreground mb-2">{template.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{template.body}</p>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-slate-300 bg-transparent"
+                          className="border-input bg-transparent"
                           onClick={() => {
                             setComposedMessage((p) => ({
                               ...p,

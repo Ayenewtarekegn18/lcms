@@ -15,7 +15,7 @@ import {
 } from '@/lib/financial/summary'
 
 const PAGE_SIZE = 50
-const selectClass = 'px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white'
+const selectClass = 'px-3 py-2 border border-input rounded-lg text-sm bg-card'
 
 type Filters = { type: '' | Kind; month: string }
 
@@ -95,11 +95,11 @@ export default function FinancialPage() {
   const periodName = filters.month ? monthLabel(filters.month) : 'All time'
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-muted p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900">Financial Management</h1>
-          <p className="text-slate-500 mt-2">Track income, expenses, and church finances, in Birr</p>
+          <h1 className="text-4xl font-bold text-foreground">Financial Management</h1>
+          <p className="text-muted-foreground mt-2">Track income, expenses, and church finances, in Birr</p>
         </div>
         <Button variant="outline" onClick={exportCsv} disabled={loading || exporting || total === 0}>
           <Download className="w-4 h-4 mr-2" />
@@ -111,7 +111,7 @@ export default function FinancialPage() {
 
       <div className="mb-6 flex flex-wrap items-end gap-4">
         <div>
-          <label htmlFor="filter-type" className="block text-xs font-medium text-slate-600 mb-1">Type</label>
+          <label htmlFor="filter-type" className="block text-xs font-medium text-muted-foreground mb-1">Type</label>
           <select id="filter-type" value={filters.type} onChange={(e) => setFilter('type', e.target.value as Filters['type'])} className={selectClass}>
             <option value="">Income and expenses</option>
             <option value="income">Income</option>
@@ -119,7 +119,7 @@ export default function FinancialPage() {
           </select>
         </div>
         <div>
-          <label htmlFor="filter-month" className="block text-xs font-medium text-slate-600 mb-1">Month</label>
+          <label htmlFor="filter-month" className="block text-xs font-medium text-muted-foreground mb-1">Month</label>
           <select id="filter-month" value={filters.month} onChange={(e) => setFilter('month', e.target.value)} className={selectClass}>
             <option value="">All months</option>
             {(ledger?.months ?? []).map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
@@ -140,9 +140,9 @@ export default function FinancialPage() {
         </TabsList>
 
         <TabsContent value="transactions">
-          <Card className="bg-white border-slate-200">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-slate-900">Transactions</CardTitle>
+              <CardTitle className="text-foreground">Transactions</CardTitle>
               <CardDescription>
                 {loading && !ledger ? 'Loading…' : `${total} ${total === 1 ? 'transaction' : 'transactions'}`}
                 {ledger?.totals.period && ` · ${periodName}: income ${formatBirr(ledger.totals.period.income)}, expenses ${formatBirr(ledger.totals.period.expense)}`}
@@ -150,27 +150,27 @@ export default function FinancialPage() {
             </CardHeader>
             <CardContent>
               {loading && !ledger ? (
-                <p className="text-center py-12 text-slate-500">Loading transactions…</p>
+                <p className="text-center py-12 text-muted-foreground">Loading transactions…</p>
               ) : failed && !ledger ? (
                 <div className="text-center py-12 space-y-3">
-                  <p className="text-slate-500">The ledger could not be loaded.</p>
+                  <p className="text-muted-foreground">The ledger could not be loaded.</p>
                   <Button variant="outline" onClick={load}>Try again</Button>
                 </div>
               ) : transactions.length === 0 ? (
-                <p className="text-center py-12 text-slate-500">No transactions recorded</p>
+                <p className="text-center py-12 text-muted-foreground">No transactions recorded</p>
               ) : (
                 <>
                   <div className="overflow-x-auto">
                     <table className="w-full" aria-busy={loading}>
                       <thead>
-                        <tr className="border-b border-slate-200 bg-slate-50">
-                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Date</th>
-                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Type</th>
-                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Category</th>
-                          <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Description</th>
-                          <th className="px-6 py-3 text-right text-sm font-semibold text-slate-900">Amount</th>
+                        <tr className="border-b border-border bg-muted">
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Date</th>
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Type</th>
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Category</th>
+                          <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Description</th>
+                          <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">Amount</th>
                           {ledger?.permissions.delete && (
-                            <th className="px-6 py-3 text-center text-sm font-semibold text-slate-900">Action</th>
+                            <th className="px-6 py-3 text-center text-sm font-semibold text-foreground">Action</th>
                           )}
                         </tr>
                       </thead>
@@ -178,15 +178,15 @@ export default function FinancialPage() {
                         {transactions.map((txn) => {
                           const income = txn.transaction_type === 'income'
                           return (
-                            <tr key={txn.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors" data-testid="ledger-row">
-                              <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">{formatLedgerDate(txn.transaction_date)}</td>
+                            <tr key={txn.id} className="border-b border-border hover:bg-muted transition-colors" data-testid="ledger-row">
+                              <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">{formatLedgerDate(txn.transaction_date)}</td>
                               <td className="px-6 py-4 text-sm">
                                 <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${income ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                   {income ? 'Income' : 'Expense'}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-sm text-slate-600">{txn.category || UNCATEGORIZED}</td>
-                              <td className="px-6 py-4 text-sm text-slate-600 break-words">{txn.description}</td>
+                              <td className="px-6 py-4 text-sm text-muted-foreground">{txn.category || UNCATEGORIZED}</td>
+                              <td className="px-6 py-4 text-sm text-muted-foreground break-words">{txn.description}</td>
                               <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                                 <span className={income ? 'text-green-600' : 'text-red-600'}>
                                   {income ? '+' : '−'}{formatBirr(txn.amount)}
@@ -211,7 +211,7 @@ export default function FinancialPage() {
                     </table>
                   </div>
                   {total > PAGE_SIZE && (
-                    <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+                    <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                       <span>{offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}</span>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" disabled={loading || offset === 0} onClick={() => setOffset((o) => Math.max(o - PAGE_SIZE, 0))}>
@@ -253,21 +253,21 @@ function CategoryCard({ title, period, kind, categories }: {
 }) {
   const rows = (categories ?? []).filter((c) => c.kind === kind)
   return (
-    <Card className="bg-white border-slate-200">
+    <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-slate-900">{title}</CardTitle>
+        <CardTitle className="text-foreground">{title}</CardTitle>
         <CardDescription>{period}</CardDescription>
       </CardHeader>
       <CardContent>
         {categories === null ? (
-          <p className="text-slate-500 text-sm">Loading…</p>
+          <p className="text-muted-foreground text-sm">Loading…</p>
         ) : rows.length === 0 ? (
-          <p className="text-slate-500 text-sm">{kind === 'income' ? 'No income recorded' : 'No expenses recorded'}</p>
+          <p className="text-muted-foreground text-sm">{kind === 'income' ? 'No income recorded' : 'No expenses recorded'}</p>
         ) : (
           <div className="space-y-3">
             {rows.map((c) => (
               <div key={c.category} className="flex items-center justify-between gap-4">
-                <span className="text-slate-700">{c.category} <span className="text-xs text-slate-400">({c.count})</span></span>
+                <span className="text-foreground">{c.category} <span className="text-xs text-muted-foreground">({c.count})</span></span>
                 <span className={`font-medium ${kind === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatBirr(c.total)}</span>
               </div>
             ))}

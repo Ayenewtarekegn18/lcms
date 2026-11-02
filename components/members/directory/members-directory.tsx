@@ -107,7 +107,7 @@ export function MembersDirectory({ canEdit, canRegister, currentUserId }: Member
           placeholder="Search by name, email or phone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm bg-white border-slate-300 text-slate-900 placeholder-slate-400"
+          className="max-w-sm bg-card border-input text-foreground placeholder:text-muted-foreground"
         />
         {canRegister && (
           <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -116,9 +116,9 @@ export function MembersDirectory({ canEdit, canRegister, currentUserId }: Member
         )}
       </div>
 
-      <Card className="bg-white border-slate-200">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-slate-900">Members Directory</CardTitle>
+          <CardTitle className="text-foreground">Members Directory</CardTitle>
           <CardDescription>
             {firstLoad ? 'Loading…' : page.query ? `${total} matching members` : `${total} active members`}
           </CardDescription>
@@ -126,18 +126,18 @@ export function MembersDirectory({ canEdit, canRegister, currentUserId }: Member
         <CardContent>
           {firstLoad && !failed ? (
             <div className="text-center py-12">
-              <p className="text-slate-500">Loading members...</p>
+              <p className="text-muted-foreground">Loading members...</p>
             </div>
           ) : failed && members.length === 0 ? (
             <div className="text-center py-12 space-y-3">
-              <p className="text-slate-500">The members could not be loaded.</p>
+              <p className="text-muted-foreground">The members could not be loaded.</p>
               <Button variant="outline" onClick={() => setReload((n) => n + 1)} disabled={loading}>
                 {loading ? 'Trying again…' : 'Try again'}
               </Button>
             </div>
           ) : members.length === 0 ? (
             <div className="text-center py-12 space-y-3">
-              <p className="text-slate-500">
+              <p className="text-muted-foreground">
                 {page.query ? `No active members match "${page.query}".` : 'No members yet.'}
               </p>
               {canRegister && !page.query && (
@@ -151,13 +151,13 @@ export function MembersDirectory({ canEdit, canRegister, currentUserId }: Member
               <div className={`overflow-x-auto transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50">
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Name</th>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Member No.</th>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Email</th>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Phone</th>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Ministry</th>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Actions</th>
+                    <tr className="border-b border-border bg-muted">
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Name</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Member No.</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Email</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Phone</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Ministry</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -167,13 +167,13 @@ export function MembersDirectory({ canEdit, canRegister, currentUserId }: Member
                         <tr
                           key={member.id}
                           data-testid={`member-row-${member.id}`}
-                          className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
+                          className="border-b border-border hover:bg-muted transition-colors"
                         >
-                          <td className="px-6 py-4 text-sm font-medium text-slate-900">{name}</td>
-                          <td className="px-6 py-4 text-sm font-mono text-slate-600">{member.member_details?.member_number ?? '-'}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{member.email || '-'}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{member.phone || '-'}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{activeMinistries(member).join(', ') || '-'}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-foreground">{name}</td>
+                          <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{member.member_details?.member_number ?? '-'}</td>
+                          <td className="px-6 py-4 text-sm text-muted-foreground">{member.email || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-muted-foreground">{member.phone || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-muted-foreground">{activeMinistries(member).join(', ') || '-'}</td>
                           <td className="px-6 py-4 text-sm">
                             <div className="flex gap-2">
                               <button
@@ -215,7 +215,7 @@ export function MembersDirectory({ canEdit, canRegister, currentUserId }: Member
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 flex items-center justify-between gap-4 text-sm text-slate-600">
+              <div className="mt-4 flex items-center justify-between gap-4 text-sm text-muted-foreground">
                 <span>{rangeLabel(page.offset, members.length, total)}</span>
                 <div className="flex gap-2">
                   <Button

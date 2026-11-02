@@ -41,16 +41,16 @@ export default function ReportsPage() {
 
   if (loading && !report) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8">
-        <p className="text-slate-500">Loading reports…</p>
+      <div className="min-h-screen bg-muted p-8">
+        <p className="text-muted-foreground">Loading reports…</p>
       </div>
     )
   }
 
   if (!report) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8 space-y-3">
-        <p className="text-slate-500">The reports could not be loaded.</p>
+      <div className="min-h-screen bg-muted p-8 space-y-3">
+        <p className="text-muted-foreground">The reports could not be loaded.</p>
         <Button variant="outline" onClick={load}>Try again</Button>
       </div>
     )
@@ -66,11 +66,11 @@ export default function ReportsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-muted p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900">Reports & Analytics</h1>
-          <p className="text-slate-500 mt-2">Church figures from the records, as of today</p>
+          <h1 className="text-4xl font-bold text-foreground">Reports & Analytics</h1>
+          <p className="text-muted-foreground mt-2">Church figures from the records, as of today</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={exportCsv}>
           <Download className="w-4 h-4 mr-2" />
@@ -80,16 +80,16 @@ export default function ReportsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {tiles.map(({ key, label, value, note, Icon }) => (
-          <Card key={key} className="bg-white border-slate-200">
+          <Card key={key} className="bg-card border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-600 flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
                 {label}
-                <Icon className="w-4 h-4 text-slate-400" aria-hidden />
+                <Icon className="w-4 h-4 text-muted-foreground" aria-hidden />
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-slate-900" data-testid={`report-${key}`}>{count.format(value)}</div>
-              {note && <p className="text-xs text-slate-500 mt-1">{note}</p>}
+              <div className="text-3xl font-bold text-foreground" data-testid={`report-${key}`}>{count.format(value)}</div>
+              {note && <p className="text-xs text-muted-foreground mt-1">{note}</p>}
             </CardContent>
           </Card>
         ))}
@@ -102,8 +102,8 @@ export default function ReportsPage() {
           <CategoriesCard monthName={monthName} categories={finance.categories} />
         </div>
       ) : (
-        <Card className="bg-white border-slate-200">
-          <CardContent className="py-6 text-sm text-slate-500">
+        <Card className="bg-card border-border">
+          <CardContent className="py-6 text-sm text-muted-foreground">
             Financial figures are shown to admins, elders and the finance team.
           </CardContent>
         </Card>
@@ -116,19 +116,19 @@ function MoneyCard({ title, description, totals, testId }: { title: string; desc
   const lines = [
     { key: 'income', label: 'Income', value: totals.income, tone: 'text-green-700' },
     { key: 'expense', label: 'Expenses', value: totals.expense, tone: 'text-red-700' },
-    { key: 'net', label: 'Net', value: totals.net, tone: totals.net >= 0 ? 'text-slate-900' : 'text-red-700' },
+    { key: 'net', label: 'Net', value: totals.net, tone: totals.net >= 0 ? 'text-foreground' : 'text-red-700' },
   ]
   return (
-    <Card className="bg-white border-slate-200">
+    <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-slate-900">{title}</CardTitle>
+        <CardTitle className="text-foreground">{title}</CardTitle>
         <CardDescription>{description} · {count.format(totals.count)} transactions</CardDescription>
       </CardHeader>
       <CardContent>
         <dl className="space-y-3">
           {lines.map((line) => (
             <div key={line.key} className="flex items-center justify-between">
-              <dt className="text-slate-700">{line.label}</dt>
+              <dt className="text-foreground">{line.label}</dt>
               <dd className={`font-bold ${line.tone}`} data-testid={`${testId}-${line.key}`}>{formatBirr(line.value)}</dd>
             </div>
           ))}
@@ -140,19 +140,19 @@ function MoneyCard({ title, description, totals, testId }: { title: string; desc
 
 function CategoriesCard({ monthName, categories }: { monthName: string; categories: CategoryTotal[] }) {
   return (
-    <Card className="bg-white border-slate-200">
+    <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-slate-900">By category</CardTitle>
+        <CardTitle className="text-foreground">By category</CardTitle>
         <CardDescription>{monthName}</CardDescription>
       </CardHeader>
       <CardContent>
         {categories.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing recorded this month</p>
+          <p className="text-sm text-muted-foreground">Nothing recorded this month</p>
         ) : (
           <div className="space-y-2">
             {categories.map((c) => (
               <div key={`${c.kind}:${c.category}`} className="flex items-center justify-between gap-4 text-sm">
-                <span className="text-slate-700">{c.category}</span>
+                <span className="text-foreground">{c.category}</span>
                 <span className={`font-medium ${c.kind === 'income' ? 'text-green-700' : 'text-red-700'}`}>
                   {c.kind === 'income' ? '+' : '−'}{formatBirr(c.total)}
                 </span>

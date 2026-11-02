@@ -13,7 +13,7 @@ import { FIELD_LIMITS, emptyEventForm, eventToForm, formToPayload, type EventFor
 import { EVENT_TYPES, type EventItem } from '@/lib/events/schema'
 import { dayKey } from '@/lib/events/time'
 
-const selectClass = 'mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900'
+const selectClass = 'mt-1 w-full px-3 py-2 border border-input rounded-lg text-sm bg-card text-foreground'
 
 type Props = {
   open: boolean
@@ -107,7 +107,7 @@ export function EventFormDialog({ open, onOpenChange, event, defaultDate, defaul
 
         <form onSubmit={submit} noValidate className="space-y-4">
           <div>
-            <Label htmlFor="event-title" className="text-slate-700">Title *</Label>
+            <Label htmlFor="event-title" className="text-foreground">Title *</Label>
             <Input id="event-title" value={values.title} onChange={change('title')} maxLength={FIELD_LIMITS.title}
               placeholder="e.g., Sunday Service, Bible Study" className="mt-1"
               aria-invalid={!!errors.title} aria-describedby={describedBy('title')} />
@@ -115,7 +115,7 @@ export function EventFormDialog({ open, onOpenChange, event, defaultDate, defaul
           </div>
 
           <div>
-            <Label htmlFor="event-type" className="text-slate-700">Type</Label>
+            <Label htmlFor="event-type" className="text-foreground">Type</Label>
             <select id="event-type" value={values.event_type} onChange={change('event_type')} className={selectClass}>
               {typeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -124,13 +124,13 @@ export function EventFormDialog({ open, onOpenChange, event, defaultDate, defaul
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="event-date" className="text-slate-700">Date *</Label>
+              <Label htmlFor="event-date" className="text-foreground">Date *</Label>
               <Input id="event-date" type="date" value={values.date} onChange={change('date')} className="mt-1"
                 aria-invalid={!!errors.date} aria-describedby={describedBy('date')} />
               {fieldError('date')}
             </div>
             <div>
-              <Label htmlFor="event-time" className="text-slate-700">Start time *</Label>
+              <Label htmlFor="event-time" className="text-foreground">Start time *</Label>
               <Input id="event-time" type="time" value={values.time} onChange={change('time')} className="mt-1"
                 aria-invalid={!!errors.time} aria-describedby={describedBy('time')} />
               {fieldError('time')}
@@ -139,46 +139,46 @@ export function EventFormDialog({ open, onOpenChange, event, defaultDate, defaul
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="event-end-date" className="text-slate-700">End date</Label>
+              <Label htmlFor="event-end-date" className="text-foreground">End date</Label>
               <Input id="event-end-date" type="date" value={values.end_date} onChange={change('end_date')} min={values.date || undefined} className="mt-1" />
             </div>
             <div>
-              <Label htmlFor="event-end-time" className="text-slate-700">End time</Label>
+              <Label htmlFor="event-end-time" className="text-foreground">End time</Label>
               <Input id="event-end-time" type="time" value={values.end_time} onChange={change('end_time')} className="mt-1"
                 aria-invalid={!!errors.end_time} aria-describedby={describedBy('end_time')} />
               {fieldError('end_time')}
             </div>
           </div>
-          <p className="-mt-2 text-xs text-slate-500">Optional. Leave the end date empty for an event that ends the same day.</p>
+          <p className="-mt-2 text-xs text-muted-foreground">Optional. Leave the end date empty for an event that ends the same day.</p>
 
           <div>
-            <Label htmlFor="event-location" className="text-slate-700">Location</Label>
+            <Label htmlFor="event-location" className="text-foreground">Location</Label>
             <Input id="event-location" value={values.location} onChange={change('location')} maxLength={FIELD_LIMITS.location}
               placeholder="Church location or address" className="mt-1" aria-invalid={!!errors.location} aria-describedby={describedBy('location')} />
             {fieldError('location')}
           </div>
 
           <div>
-            <Label htmlFor="event-ministry" className="text-slate-700">Ministry (optional)</Label>
+            <Label htmlFor="event-ministry" className="text-foreground">Ministry (optional)</Label>
             <select id="event-ministry" value={values.ministry_id} onChange={change('ministry_id')} className={selectClass}
               aria-invalid={!!errors.ministry_id} aria-describedby={describedBy('ministry_id')}>
               <option value="">None</option>
               {ministryOptions.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
-            {!ministries && !ministriesFailed && <p className="mt-1 text-xs text-slate-500">Loading ministries…</p>}
+            {!ministries && !ministriesFailed && <p className="mt-1 text-xs text-muted-foreground">Loading ministries…</p>}
             {ministriesFailed && <p className="mt-1 text-xs text-amber-700">The ministries could not be loaded. Close and open this form to try again.</p>}
             {fieldError('ministry_id')}
           </div>
 
           <div>
-            <Label htmlFor="event-max" className="text-slate-700">Max attendees</Label>
+            <Label htmlFor="event-max" className="text-foreground">Max attendees</Label>
             <Input id="event-max" type="number" inputMode="numeric" min={1} max={100000} step={1} value={values.max_attendees}
               onChange={change('max_attendees')} className="mt-1" aria-invalid={!!errors.max_attendees} aria-describedby={describedBy('max_attendees')} />
             {fieldError('max_attendees')}
           </div>
 
           <div>
-            <Label htmlFor="event-description" className="text-slate-700">Description</Label>
+            <Label htmlFor="event-description" className="text-foreground">Description</Label>
             <Textarea id="event-description" value={values.description} onChange={change('description')} maxLength={FIELD_LIMITS.description}
               placeholder="Add details about this event..." className="mt-1" rows={3}
               aria-invalid={!!errors.description} aria-describedby={describedBy('description')} />

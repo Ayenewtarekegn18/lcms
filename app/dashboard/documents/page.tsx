@@ -126,15 +126,15 @@ export default function DocumentsPage() {
       case 'Leadership Only':
         return 'bg-red-100 text-red-800'
       default:
-        return 'bg-slate-100 text-slate-800'
+        return 'bg-muted text-foreground'
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-muted p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Document Archive</h1>
-        <p className="text-slate-500 mt-2">Digital storage and management of church documents</p>
+        <h1 className="text-4xl font-bold text-foreground">Document Archive</h1>
+        <p className="text-muted-foreground mt-2">Digital storage and management of church documents</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
@@ -147,30 +147,30 @@ export default function DocumentsPage() {
           <div className="space-y-6">
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-slate-600">Total Documents</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Documents</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{documents.length}</div>
+                  <div className="text-3xl font-bold text-foreground">{documents.length}</div>
                 </CardContent>
               </Card>
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-slate-600">Total Size</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Size</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">
+                  <div className="text-3xl font-bold text-foreground">
                     {formatSize(documents.reduce((sum, d) => sum + (d.file_size_bytes || 0), 0))}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-white border-slate-200">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-slate-600">Categories</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Categories</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">
+                  <div className="text-3xl font-bold text-foreground">
                     {new Set(documents.map((d) => d.category).filter(Boolean)).size}
                   </div>
                 </CardContent>
@@ -178,11 +178,11 @@ export default function DocumentsPage() {
             </div>
 
             {/* Filter and Search */}
-            <Card className="bg-white border-slate-200">
+            <Card className="bg-card border-border">
               <CardHeader>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 max-w-sm relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Search documents..."
                       value={search}
@@ -209,8 +209,8 @@ export default function DocumentsPage() {
                   onClick={() => setSelectedCategory(category)}
                   className={`px-4 py-2 rounded-lg transition-colors ${
                     selectedCategory === category
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                      ? 'bg-primary text-white'
+                      : 'bg-card border border-border text-foreground hover:bg-muted'
                   }`}
                 >
                   {category}
@@ -219,28 +219,28 @@ export default function DocumentsPage() {
             </div>
 
             {/* Documents List */}
-            <Card className="bg-white border-slate-200">
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50">
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">
+                      <tr className="border-b border-border bg-muted">
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                           Document Name
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                           Category
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                           Access Level
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                           Size
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                           Date
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                           Actions
                         </th>
                       </tr>
@@ -248,26 +248,26 @@ export default function DocumentsPage() {
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                          <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                             Loading documents...
                           </td>
                         </tr>
                       ) : filteredDocuments.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                          <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                             No documents. Upload one to get started.
                           </td>
                         </tr>
                       ) : (
                         filteredDocuments.map((doc) => (
-                          <tr key={doc.id} className="border-b border-slate-200 hover:bg-slate-50">
-                            <td className="px-6 py-4 text-sm font-medium text-slate-900">
+                          <tr key={doc.id} className="border-b border-border hover:bg-muted">
+                            <td className="px-6 py-4 text-sm font-medium text-foreground">
                               <div className="flex items-center gap-3">
                                 <File className="w-5 h-5 text-blue-600" />
                                 {doc.name}
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-slate-600">{doc.category ?? '—'}</td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">{doc.category ?? '—'}</td>
                             <td className="px-6 py-4 text-sm">
                               <span
                                 className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getAccessColor(
@@ -278,8 +278,8 @@ export default function DocumentsPage() {
                                 {doc.access_level}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-slate-600">{formatSize(doc.file_size_bytes)}</td>
-                            <td className="px-6 py-4 text-sm text-slate-600">
+                            <td className="px-6 py-4 text-sm text-muted-foreground">{formatSize(doc.file_size_bytes)}</td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">
                               {new Date(doc.created_at).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 text-sm flex gap-2">
@@ -299,27 +299,27 @@ export default function DocumentsPage() {
         </TabsContent>
 
         <TabsContent value="upload">
-          <Card className="bg-white border-slate-200">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-slate-900">Upload New Document</CardTitle>
+              <CardTitle className="text-foreground">Upload New Document</CardTitle>
               <CardDescription>Add documents to the church archive (stored in Supabase Storage)</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpload} className="space-y-6">
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 transition-colors">
+                <div className="border-2 border-dashed border-input rounded-lg p-8 text-center hover:bg-muted transition-colors">
                   <input
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
                     onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
                   />
-                  <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Choose a file</h3>
-                  <p className="text-slate-600 mb-4">{selectedFile ? selectedFile.name : 'No file selected'}</p>
+                  <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Choose a file</h3>
+                  <p className="text-muted-foreground mb-4">{selectedFile ? selectedFile.name : 'No file selected'}</p>
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-slate-300 bg-transparent"
+                    className="border-input bg-transparent"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     Choose File
@@ -328,7 +328,7 @@ export default function DocumentsPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-2">Document Name</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Document Name</label>
                     <Input
                       placeholder="Enter document name"
                       value={uploadForm.name}
@@ -338,9 +338,9 @@ export default function DocumentsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-900 mb-2">Category</label>
+                      <label className="block text-sm font-medium text-foreground mb-2">Category</label>
                       <select
-                        className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                        className="w-full p-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                         value={uploadForm.category}
                         onChange={(e) => setUploadForm((p) => ({ ...p, category: e.target.value }))}
                       >
@@ -350,9 +350,9 @@ export default function DocumentsPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-900 mb-2">Access Level</label>
+                      <label className="block text-sm font-medium text-foreground mb-2">Access Level</label>
                       <select
-                        className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                        className="w-full p-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                         value={uploadForm.access_level}
                         onChange={(e) => setUploadForm((p) => ({ ...p, access_level: e.target.value }))}
                       >

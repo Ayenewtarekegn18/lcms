@@ -21,7 +21,7 @@ type Form = { transaction_type: Kind; category: string; amount: string; transact
 type Field = keyof Form
 
 const blank = (today: string): Form => ({ transaction_type: 'income', category: '', amount: '', transaction_date: today, description: '' })
-const selectClass = 'mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white aria-invalid:border-red-500'
+const selectClass = 'mt-1 w-full px-3 py-2 border border-input rounded-lg text-sm bg-card aria-invalid:border-red-500'
 
 /** Checks the form before sending; the API applies the same rules (and is the one that counts). */
 function check(form: Form): Partial<Record<Field, string>> {
@@ -98,7 +98,7 @@ export function AddTransactionDialog({ open, onOpenChange, today, onSaved }: {
 
         <form onSubmit={submit} noValidate className="space-y-4">
           <div>
-            <Label htmlFor="transaction_type" className="text-slate-700">Type</Label>
+            <Label htmlFor="transaction_type" className="text-foreground">Type</Label>
             <select
               id="transaction_type"
               value={form.transaction_type}
@@ -111,7 +111,7 @@ export function AddTransactionDialog({ open, onOpenChange, today, onSaved }: {
           </div>
 
           <div>
-            <Label htmlFor="category" className="text-slate-700">Category</Label>
+            <Label htmlFor="category" className="text-foreground">Category</Label>
             <select id="category" value={form.category} onChange={(e) => set('category', e.target.value)} className={selectClass} {...invalid('category')}>
               <option value="">Select category</option>
               {CATEGORIES[form.transaction_type].map((c) => <option key={c} value={c}>{c}</option>)}
@@ -120,7 +120,7 @@ export function AddTransactionDialog({ open, onOpenChange, today, onSaved }: {
           </div>
 
           <div>
-            <Label htmlFor="amount" className="text-slate-700">Amount (ETB)</Label>
+            <Label htmlFor="amount" className="text-foreground">Amount (ETB)</Label>
             <Input
               id="amount"
               type="number"
@@ -137,7 +137,7 @@ export function AddTransactionDialog({ open, onOpenChange, today, onSaved }: {
           </div>
 
           <div>
-            <Label htmlFor="transaction_date" className="text-slate-700">Date</Label>
+            <Label htmlFor="transaction_date" className="text-foreground">Date</Label>
             <Input
               id="transaction_date"
               type="date"
@@ -150,7 +150,7 @@ export function AddTransactionDialog({ open, onOpenChange, today, onSaved }: {
           </div>
 
           <div>
-            <Label htmlFor="description" className="text-slate-700">Description</Label>
+            <Label htmlFor="description" className="text-foreground">Description</Label>
             <Textarea
               id="description"
               value={form.description}
