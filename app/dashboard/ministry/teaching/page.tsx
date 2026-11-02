@@ -3,7 +3,7 @@
 import { BookOpen, FileText, GraduationCap } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { MinistryWorkspace } from '@/components/ministry/workspace/MinistryWorkspace'
-import { linkedResourceTab } from '@/components/ministry/workspace/linked-resource-tab'
+import { lookupResourceTab } from '@/components/ministry/workspace/lookup-resource-tab'
 import { defineResourceTab } from '@/components/ministry/workspace/types'
 import { choiceLabel } from '@/lib/ministries/options'
 import { ENROLLMENT_STATUSES, MATERIAL_TYPES, PROGRAM_TYPES } from '@/lib/ministries/teaching'
@@ -73,7 +73,7 @@ const programs = defineResourceTab<Program>({
   empty: { title: 'No programs yet.', description: 'Add the courses, seminars and workshops the ministry teaches.' },
 })
 
-const materials = linkedResourceTab<Material, Program>(
+const materials = lookupResourceTab<Material, Program>(
   {
     key: 'materials',
     label: 'Materials',
@@ -102,10 +102,10 @@ const materials = linkedResourceTab<Material, Program>(
     ],
     empty: { title: 'No materials yet.', description: 'Link the slides, handouts and recordings of each program.' },
   },
-  { field: 'program_id', api: '/api/education-programs', option: programChoice, none: noPrograms('link its materials') },
+  { field: 'program_id', api: '/api/education-programs', option: programChoice, missing: noPrograms('link its materials') },
 )
 
-const enrollments = linkedResourceTab<Enrollment, Program>(
+const enrollments = lookupResourceTab<Enrollment, Program>(
   {
     key: 'enrollments',
     label: 'Enrollments',
@@ -141,7 +141,7 @@ const enrollments = linkedResourceTab<Enrollment, Program>(
     ],
     empty: { title: 'Nobody is enrolled yet.', description: 'Enroll members in a program and follow their progress.' },
   },
-  { field: 'program_id', api: '/api/education-programs', option: programChoice, none: noPrograms('enroll members') },
+  { field: 'program_id', api: '/api/education-programs', option: programChoice, missing: noPrograms('enroll members') },
 )
 
 export default function TeachingPage() {

@@ -23,7 +23,7 @@ type FollowUp = Tables<'spiritual_follow_ups'> & { member: Person | null }
 
 const muted = (text: string) => <span className="text-muted-foreground">{text}</span>
 const person = (p: Person | null, fallback = 'Unknown member') => (p ? memberName(p) : fallback)
-const keepHelp = 'Anyone in the member register. To change it later, search for someone else.'
+const keepHelp = 'Anyone in the member register.'
 
 const classes = defineResourceTab<SpiritualClass>({
   key: 'classes',

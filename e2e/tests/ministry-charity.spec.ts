@@ -203,7 +203,7 @@ test.describe('charity workspace (ministry leader)', () => {
 
     await page.goto('/dashboard/ministry/charity#aid-requests')
     await expect(page.getByRole('heading', { name: 'Charity Ministry', exact: true })).toBeVisible()
-    await expect(page.getByText('Aid requests and distributions are visible to administrators and elders only.')).toBeVisible()
+    await expect(page.getByText('Aid requests are confidential.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add aid request' })).toHaveCount(0)
     await expect(page.getByRole('region', { name: 'Charity totals' })).toHaveCount(0)
   })

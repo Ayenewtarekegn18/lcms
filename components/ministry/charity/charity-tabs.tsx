@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { HandCoins, HandHeart, Lock } from 'lucide-react'
+import { HandCoins, HandHeart } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { EmptyState } from '@/components/app/empty-state'
 import { ResourceTab } from '@/components/ministry/workspace/resource-tab'
+import { pastoralOnly } from '@/components/ministry/workspace/pastoral-tab'
 import { defineResourceTab, type ResourceTabConfig, type WorkspaceContext } from '@/components/ministry/workspace/types'
 import { PASTORAL } from '@/lib/auth/roles'
 import type { Tables } from '@/lib/database.types'
@@ -30,7 +30,7 @@ const requester = (r: { member: Person | null }) => (r.member ? memberName(r.mem
 const statusVariant = { pending: 'outline', approved: 'default', rejected: 'outline', paid: 'secondary' } as const
 export function AidStatusBadge({ status }: { status: string | null }) {
   const variant = statusVariant[(status ?? 'pending') as keyof typeof statusVariant] ?? 'outline'
-  // The theme has no destructive-foreground colour, so "Rejected" is a red outline rather than the destructive variant.
+  // "Rejected" is a soft red outline: a solid red badge in a list of requests reads as an error.
   const rejected = status === 'rejected' ? 'border-destructive/40 bg-destructive/10 text-destructive' : ''
   return <Badge variant={variant} className={`whitespace-nowrap ${rejected}`}>{aidStatusLabel(status)}</Badge>
 }
@@ -146,14 +146,6 @@ function usePayableRequests(version: number) {
   return options
 }
 
-function Confidential() {
-  return (
-    <div className="rounded-xl border border-border bg-card">
-      <EmptyState icon={Lock} title="Confidential." description="Aid requests and distributions are visible to administrators and elders only." />
-    </div>
-  )
-}
-
 /** The tab's figures above its list; every change in the list reloads them. */
 function WithTotals({ ctx, config, onChange }: { ctx: WorkspaceContext; config: ResourceTabConfig; onChange?: () => void }) {
   const [version, setVersion] = useState(0)
@@ -169,16 +161,6 @@ function WithTotals({ ctx, config, onChange }: { ctx: WorkspaceContext; config: 
   )
 }
 
-function AidRequestsTab({ ctx }: { ctx: WorkspaceContext }) {
-  if (!PASTORAL.includes(ctx.role)) return <Confidential />
-  return <WithTotals ctx={ctx} config={aidRequestsConfig} />
-}
-
-function DistributionsTab({ ctx }: { ctx: WorkspaceContext }) {
-  if (!PASTORAL.includes(ctx.role)) return <Confidential />
-  return <Distributions ctx={ctx} />
-}
-
 function Distributions({ ctx }: { ctx: WorkspaceContext }) {
   const [version, setVersion] = useState(0)
   const options = usePayableRequests(version)
@@ -187,5 +169,5 @@ function Distributions({ ctx }: { ctx: WorkspaceContext }) {
   return <WithTotals ctx={ctx} config={config} onChange={reloadOptions} />
 }
 
-export const aidRequestsTab = { key: 'aid-requests', label: 'Aid requests', icon: HandHeart, render: (ctx: WorkspaceContext) => <AidRequestsTab ctx={ctx} /> }
-export const distributionsTab = { key: 'distributions', label: 'Distributions', icon: HandCoins, render: (ctx: WorkspaceContext) => <DistributionsTab ctx={ctx} /> }
+export const aidRequestsTab = pastoralOnly({ key: 'aid-requests', label: 'Aid requests', icon: HandHeart, render: (ctx) => <WithTotals ctx={ctx} config={aidRequestsConfig} /> })
+export const distributionsTab = pastoralOnly({ key: 'distributions', label: 'Distributions', icon: HandCoins, render: (ctx) => <Distributions ctx={ctx} /> })

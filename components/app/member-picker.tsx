@@ -52,6 +52,17 @@ export function MemberPicker({ id, value, onChange, invalid, describedBy, disabl
     return () => { clearTimeout(timer); ctl.abort() }
   }, [query])
 
+  // A saved row's member (editing): look the person up so the form shows who is chosen.
+  useEffect(() => {
+    if (!value || chosen?.id === value) return
+    const ctl = new AbortController()
+    fetch(`/api/members?${new URLSearchParams({ id: value })}`, { signal: ctl.signal })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rows: Found[]) => setChosen(rows[0] ?? { id: value, first_name: 'A former member', last_name: '', email: null, phone: null }))
+      .catch(() => {})
+    return () => ctl.abort()
+  }, [value, chosen?.id])
+
   if (value && chosen?.id === value) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">

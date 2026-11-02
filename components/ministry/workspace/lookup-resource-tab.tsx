@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/app/empty-state'
 import { selectClass } from '@/components/app/entity-form-dialog'
 import { useApiList } from '@/components/app/use-api'
-import { ResourceTab } from '@/components/ministry/workspace/resource-tab'
-import type { ResourceTabConfig, WorkspaceContext } from '@/components/ministry/workspace/types'
+import { ResourceTab } from './resource-tab'
+import type { CustomTab, ResourceTabConfig, WorkspaceContext } from './types'
 import type { FieldOption } from '@/lib/forms/fields'
 import { cn } from '@/lib/utils'
 
@@ -22,9 +22,8 @@ export type Lookup<T> = {
   field: string
   /** One row of the other table as a choice. */
   option: (row: T) => FieldOption
-  /** The filter above the list: "Trip" with "All trips". */
-  filterLabel: string
-  allLabel: string
+  /** A filter above the list ("Trip" with "All trips"); leave out for no filter. */
+  filter?: { label: string; all: string }
   /** Shown instead of the list while the other table is empty (when every row needs one). */
   missing?: { title: string; description?: string; tab: string; action: string }
 }
@@ -46,7 +45,7 @@ const MAX_CHOICES = 500
  */
 export function LookupResourceTab<T>({ ctx, config, lookup, notice }: Props<T>) {
   const filterId = useId()
-  const choices = useApiList<T>(lookup.api, { pageSize: MAX_CHOICES, failure: `Could not load the ${lookup.allLabel.toLowerCase()}.` })
+  const choices = useApiList<T>(lookup.api, { pageSize: MAX_CHOICES, failure: `Could not load the choices for ${config.label.toLowerCase()}.` })
   const [filter, setFilter] = useState('')
   const { option, field } = lookup
   const options = useMemo(() => choices.rows.map(option), [choices.rows, option])
@@ -55,11 +54,13 @@ export function LookupResourceTab<T>({ ctx, config, lookup, notice }: Props<T>) 
   const tab = useMemo<ResourceTabConfig>(() => ({
     ...config,
     params: selected ? { ...config.params, [field]: selected } : config.params,
-    fields: config.fields.map((f) => (f.name === field ? { ...f, options, defaultValue: selected || f.defaultValue } : f)),
+    fields: config.fields.map((f) => (f.name === field ? { ...f, type: 'select' as const, options, defaultValue: selected || f.defaultValue } : f)),
   }), [config, field, options, selected])
 
+  // Wait for the choices: the form resets its inputs when its fields change, so they must not change
+  // while someone is filling it in.
   if (choices.loading && choices.rows.length === 0) {
-    return <div className="h-48 animate-pulse rounded-xl border border-border bg-card" aria-label="Loading" />
+    return <div className="h-48 animate-pulse rounded-xl border border-border bg-card" aria-busy="true" aria-label={`Loading ${config.label.toLowerCase()}`} />
   }
 
   if (lookup.missing && !choices.failed && options.length === 0) {
@@ -76,21 +77,22 @@ export function LookupResourceTab<T>({ ctx, config, lookup, notice }: Props<T>) 
     )
   }
 
+  const showFilter = lookup.filter && options.length > 1
   return (
     <div className="space-y-3">
-      {(notice || options.length > 1) && (
+      {(notice || showFilter) && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {notice ? <div className="text-sm text-muted-foreground">{notice}</div> : <span />}
-          {options.length > 1 && (
+          {showFilter && (
             <div className="flex min-w-0 items-center gap-2">
-              <label htmlFor={filterId} className="shrink-0 text-sm font-medium text-foreground">{lookup.filterLabel}</label>
+              <label htmlFor={filterId} className="shrink-0 text-sm font-medium text-foreground">{lookup.filter?.label}</label>
               <select
                 id={filterId}
                 className={cn(selectClass, 'min-w-0 sm:w-64')}
                 value={selected}
                 onChange={(e) => setFilter(e.target.value)}
               >
-                <option value="">{lookup.allLabel}</option>
+                <option value="">{lookup.filter?.all}</option>
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
@@ -100,4 +102,20 @@ export function LookupResourceTab<T>({ ctx, config, lookup, notice }: Props<T>) 
       <ResourceTab config={tab} ctx={ctx} />
     </div>
   )
+}
+
+/**
+ * A resource tab (see defineResourceTab) whose `lookup.field` is a select of another table's rows.
+ *
+ *   lookupResourceTab<Material, Program>({ key: 'materials', …, fields: [{ name: 'program_id', label: 'Program', type: 'select', required: true }, …] },
+ *     { field: 'program_id', api: '/api/education-programs', option: (p) => ({ value: p.id, label: p.title }) })
+ */
+export function lookupResourceTab<T, P>(config: ResourceTabConfig<T>, lookup: Lookup<P>): CustomTab {
+  const base = config as unknown as ResourceTabConfig
+  return {
+    key: config.key,
+    label: config.label,
+    icon: config.icon,
+    render: (ctx) => <LookupResourceTab config={base} lookup={lookup} ctx={ctx} />,
+  }
 }

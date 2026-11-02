@@ -8,7 +8,7 @@ import { cleanSearch, pageRange, parseBody } from '@/lib/api/validation'
 
 type Table = keyof Database['public']['Tables']
 
-/** One `ORDER BY` term. Rows are always ordered by id last, so pages never overlap. */
+/** One `ORDER BY` term. Empty values sort last either way, and rows are always ordered by id last, so pages never overlap. */
 export type OrderBy = { column: string; ascending?: boolean }
 
 export type CollectionOptions<S extends z.ZodTypeAny> = {
@@ -109,7 +109,7 @@ export function collectionRoutes<S extends z.ZodTypeAny>(options: CollectionOpti
         query = referencedTable ? query.or(f, { referencedTable }) : query.or(f)
       }
     }
-    for (const o of order) query = query.order(o.column, { ascending: o.ascending ?? true })
+    for (const o of order) query = query.order(o.column, { ascending: o.ascending ?? true, nullsFirst: false })
 
     const { data, error, count } = await query.order('id').range(...pageRange(searchParams, options.pageSize))
     if (error) return dbError(error)

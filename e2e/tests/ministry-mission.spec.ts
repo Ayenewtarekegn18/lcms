@@ -27,6 +27,7 @@ test.describe('mission workspace (admin)', () => {
   test.use({ storageState: authFile('admin') })
 
   test('plans a trip, adds a participant and a report, then deletes them', async ({ page }) => {
+    test.slow() // three tabs, each with add, edit and delete
     const title = unique('E2E Trip')
     const place = unique('E2E Village')
     const elder = TEST_USERS.elder
@@ -83,6 +84,7 @@ test.describe('mission workspace (admin)', () => {
       // Filter the list to this trip.
       await page.getByRole('tabpanel').getByLabel('Trip', { exact: true }).selectOption(tripId)
       const participantRow = page.getByRole('table', { name: 'Participants' }).getByRole('row').filter({ hasText: elderName })
+      await expect(participantRow).toHaveCount(1) // the filtered list has loaded
       await expect(participantRow).toContainText(title)
       await expect(participantRow).toContainText('Driver')
 

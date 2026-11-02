@@ -2,7 +2,7 @@
 
 import { FileText, Plane, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { LookupResourceTab, type Lookup } from '@/components/ministry/lookup-resource-tab'
+import { LookupResourceTab, type Lookup } from '@/components/ministry/workspace/lookup-resource-tab'
 import { MinistryWorkspace } from '@/components/ministry/workspace/MinistryWorkspace'
 import { defineResourceTab, type CustomTab } from '@/components/ministry/workspace/types'
 import type { Tables } from '@/lib/database.types'
@@ -64,8 +64,7 @@ const tripLookup: Lookup<Trip> = {
   api: '/api/mission-trips',
   field: 'trip_id',
   option: (t) => ({ value: t.id, label: tripOptionLabel(t, formatDate) }),
-  filterLabel: 'Trip',
-  allLabel: 'All trips',
+  filter: { label: 'Trip', all: 'All trips' },
   missing: {
     title: 'Plan a trip first.',
     description: 'Participants and reports belong to a mission trip.',

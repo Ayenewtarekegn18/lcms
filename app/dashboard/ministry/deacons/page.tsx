@@ -83,7 +83,7 @@ const supportCases = defineResourceTab<SupportCase>({
       name: 'assigned_deacon_id',
       label: 'Assigned deacon',
       type: 'member',
-      help: 'Optional. When editing, search only to change the deacon; the current one stays otherwise.',
+      help: 'Optional.',
     },
   ],
   empty: { title: 'No support cases yet.', description: 'Open a case when a member needs practical help, and assign a deacon.' },

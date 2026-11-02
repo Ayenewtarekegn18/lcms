@@ -66,6 +66,7 @@ test.describe('youth ministry (admin)', () => {
       await row.getByRole('button', { name: `Edit ${name}` }).click()
       const edit = page.getByRole('dialog', { name: 'Edit program' })
       await expect(edit.getByLabel('Date')).toHaveValue('2030-05-04')
+      await expect(edit.getByText(`${leader.firstName} ${leader.lastName}`)).toBeVisible() // the picker shows who is chosen
       await edit.getByLabel('Where').fill('Main Hall')
       await edit.getByLabel('Active (shown to members)').uncheck()
       await edit.getByRole('button', { name: 'Save changes' }).click()

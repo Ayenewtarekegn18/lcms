@@ -11,7 +11,7 @@ Legend: ✅ works · 🟡 partly works · ❌ broken · 🎭 mock data only · �
 | # | Module | Status | What works / what doesn't | Fix |
 |---|---|---|---|---|
 | 1 | Members and registration | ✅ / 🟡 | Registration follows the lebu-form register: every field, children and household rows, photo, `LKH-` member numbers, importer for existing records (e2e-tested). List, search, edit and deactivate work for staff. Not yet: editing a member's registry record, "My ID" and ID-card printing | [2.4](REMEDIATION_GUIDE.md#24-member-registration), [FE.8](REMEDIATION_GUIDE.md#fe8-lebu-form-parity), [3.1](REMEDIATION_GUIDE.md#31-separate-people-from-accounts) |
-| 2 | Ministries | 🟡 | `/dashboard/ministries` lists and adds. The hub's member counts are invented numbers | [2.7](REMEDIATION_GUIDE.md#27-wire-the-12-mock-ministry-pages) |
+| 2 | Ministries | ✅ | `/dashboard/ministries` lists and adds; the ministry hub shows each ministry's real member and upcoming-event counts and opens its workspace | [2.7](REMEDIATION_GUIDE.md#27-wire-the-12-mock-ministry-pages), [MINISTRY_WORKSPACES.md](MINISTRY_WORKSPACES.md) |
 | 3 | Attendance | ✅ | Staff pick an event (and day), mark members present/absent/late and save in one go; counts per event; one record per member, event and day. Linked in the sidebar for staff | [2.5](REMEDIATION_GUIDE.md#25-attendance-and-reports) |
 | 4 | Financial | ✅ | Income and expenses in Birr; totals (all-time, this month, by category) computed in the database; finance and admin record, only admin deletes (with confirmation); CSV export of the filtered rows | [2.2](REMEDIATION_GUIDE.md#22-financial-ledger) |
 | 5 | Events and calendar | ✅ | Staff create, edit and delete events linked to a ministry; the calendar shows the month; everyone can view, only staff see add buttons | [2.3](REMEDIATION_GUIDE.md#23-calendar-and-events) |
@@ -22,11 +22,24 @@ Legend: ✅ works · 🟡 partly works · ❌ broken · 🎭 mock data only · �
 
 ## Ministry modules (14)
 
-| Ministry | Status |
-|---|---|
-| Spiritual Service | ✅ real APIs (needs `015` applied) |
-| Women | ✅ real APIs (needs `015` applied); some summary figures are hard-coded |
-| Administration, Charity, Children, Choir, Deacons, Marriage and Family, Mission, Prayer Groups, Stage and Worship, Teaching, Workers' Aid, Youth | 🎭 hard-coded `MOCK_*` data; actions don't save. Tables exist in `015`; about half have unused API routes ([2.7](REMEDIATION_GUIDE.md#27-wire-the-12-mock-ministry-pages)) |
+| Ministry | Status | Tabs (besides Overview, Members and Events) |
+|---|---|---|
+| Administration | ✅ | Tasks (assignee, due date, overdue flag) |
+| Charity | ✅ admin and elder only | Aid requests (review recorded), Distributions, totals |
+| Children | ✅ | Classes, Teachers, Curriculum, Class attendance |
+| Choir | ✅ | Voice parts, Songs, Schedule |
+| Deacons | ✅ admin and elder only | Care visits, Support cases |
+| Marriage and Family | ✅ | Seminars (counselling stays out of the app) |
+| Mission | ✅ | Trips, Participants, Reports |
+| Prayer Groups | ✅ | Groups, Prayer requests (admin and elder; members may submit their own through the API) |
+| Spiritual Service | ✅ | Classes, Attendance, Candidates, Baptisms, Follow-ups (admin and elder) |
+| Stage and Worship | ✅ | Services, Teams, Team members, Rehearsals, Equipment |
+| Teaching | ✅ | Programs, Materials, Enrollments |
+| Women | ✅ | Meetings (with minutes), Activities, Trainings |
+| Workers' Aid | ✅ admin and elder only | Beneficiaries, Disbursements (record the month's payments in one go) |
+| Youth | ✅ | Programs, Mentorship |
+
+Every workspace is built from the same parts ([MINISTRY_WORKSPACES.md](MINISTRY_WORKSPACES.md)): add, edit and delete with confirmation, search and filters, cards instead of tables on a phone, and API routes whose roles follow the table's RLS. Each has an e2e spec covering its writes, the refusals for other roles and the phone layout. Not yet: leaders limited to their own ministry ([2.6](REMEDIATION_GUIDE.md#26-scope-ministry-leaders-to-their-own-ministry)), a member-facing prayer request form.
 
 The 10 orphan pages (community, counseling, education, facilities, health, media, music, spiritual-service, worship, youth) and their API routes were deleted ([2.8](REMEDIATION_GUIDE.md#28-delete-the-dead-surface)).
 

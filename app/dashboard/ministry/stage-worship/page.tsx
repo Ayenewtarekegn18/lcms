@@ -3,7 +3,7 @@
 import { CalendarDays, CalendarClock, Speaker, UserRound, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { MinistryWorkspace } from '@/components/ministry/workspace/MinistryWorkspace'
-import { linkedResourceTab } from '@/components/ministry/workspace/linked-resource-tab'
+import { lookupResourceTab } from '@/components/ministry/workspace/lookup-resource-tab'
 import { defineResourceTab } from '@/components/ministry/workspace/types'
 import { choiceLabel } from '@/lib/ministries/options'
 import { EQUIPMENT_STATUSES, WORSHIP_TYPES } from '@/lib/ministries/stage-worship'
@@ -89,7 +89,7 @@ const teams = defineResourceTab<Team>({
   empty: { title: 'No worship teams yet.', description: 'Create the teams that lead worship, then add who serves on them.' },
 })
 
-const teamMembers = linkedResourceTab<TeamMember, Team>(
+const teamMembers = lookupResourceTab<TeamMember, Team>(
   {
     key: 'team-members',
     label: 'Team members',
@@ -115,11 +115,11 @@ const teamMembers = linkedResourceTab<TeamMember, Team>(
     field: 'team_id',
     api: '/api/worship-teams',
     option: (t) => ({ value: t.id, label: t.name }),
-    none: { title: 'No worship teams yet.', description: 'Create a team first, then add the people who serve on it.', tab: 'teams', action: 'Go to Teams' },
+    missing: { title: 'No worship teams yet.', description: 'Create a team first, then add the people who serve on it.', tab: 'teams', action: 'Go to Teams' },
   },
 )
 
-const rehearsals = linkedResourceTab<Rehearsal, Service>(
+const rehearsals = lookupResourceTab<Rehearsal, Service>(
   {
     key: 'rehearsals',
     label: 'Rehearsals',

@@ -2,7 +2,7 @@
 
 import { HandHeart, Lock, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { LookupResourceTab, type Lookup } from '@/components/ministry/lookup-resource-tab'
+import { LookupResourceTab, type Lookup } from '@/components/ministry/workspace/lookup-resource-tab'
 import { MinistryWorkspace } from '@/components/ministry/workspace/MinistryWorkspace'
 import { defineResourceTab, type CustomTab } from '@/components/ministry/workspace/types'
 import { PASTORAL } from '@/lib/auth/roles'
@@ -82,8 +82,7 @@ const groupLookup: Lookup<Group> = {
   api: '/api/prayer-groups',
   field: 'group_id',
   option: (g) => ({ value: g.id, label: g.name }),
-  filterLabel: 'Group',
-  allLabel: 'All groups',
+  filter: { label: 'Group', all: 'All groups' },
 }
 
 const requests: CustomTab = {

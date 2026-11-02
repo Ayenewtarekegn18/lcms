@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Demo data for a ministry try-out on STAGING (never production): one leader login per ministry,
 // a few demo members in the register, members and upcoming events for every ministry, and a couple
-// of sample rows in each ministry's own tables. Safe to re-run: existing logins, members and rows
-// are reused, and a ministry that already has demo data is left alone.
+// of sample rows in each ministry's own tables. Safe to re-run: existing logins are reused (with the
+// current DEMO_PASSWORD), as are members, and a ministry that already has demo data is left alone.
 //
 //   GitHub: Actions → "Seed demo data" → Run workflow   (.github/workflows/seed-demo.yml)
 //   local:  DEMO_PASSWORD=… node --env-file=.env.development.local scripts/seed-demo.mjs
@@ -37,6 +37,10 @@ async function login(email, firstName, lastName, role) {
     .update({ role, first_name: firstName, last_name: lastName, is_active: true })
     .eq('email', email).select('id').single()
   if (error) fail(`profile ${email}: ${error.message}`)
+  if (created.error) { // an existing login: give it the current DEMO_PASSWORD
+    const reset = await db.auth.admin.updateUserById(data.id, { password })
+    if (reset.error) fail(`password ${email}: ${reset.error.message}`)
+  }
   return data.id
 }
 

@@ -1,10 +1,17 @@
 import { z } from 'zod'
-import { opt, text, uuid, date, time, count } from '@/lib/api/validation'
+import { opt, text, uuid, date, time, count, amount } from '@/lib/api/validation'
 import { MINISTRY_ROLES } from '@/lib/ministries/workspace'
 import { CHOIR_SCHEDULE_TYPES, VOICE_PARTS } from '@/lib/ministries/choir'
-import { amount } from '@/lib/api/validation'
 import { SUPPORT_CASE_STATUSES } from '@/lib/ministries/deacons'
 import { BENEFICIARY_STATUSES } from '@/lib/ministries/workers-aid'
+import { TASK_STATUSES } from '@/lib/ministries/administration'
+import { AID_STATUSES } from '@/lib/ministries/charity'
+import { ATTENDANCE_STATUSES, TEACHER_ROLES } from '@/lib/ministries/children'
+import { YOUTH_PROGRAM_TYPES } from '@/lib/ministries/youth'
+import { MISSION_TRIP_STATUSES } from '@/lib/ministries/mission'
+import { PRAYER_REQUEST_STATUSES } from '@/lib/ministries/prayer'
+import { EQUIPMENT_STATUS_VALUES, WORSHIP_TYPE_VALUES } from '@/lib/ministries/stage-worship'
+import { ENROLLMENT_STATUS_VALUES, MATERIAL_TYPE_VALUES, PROGRAM_TYPE_VALUES } from '@/lib/ministries/teaching'
 
 // Request schemas shared by several routes. Route files may only export HTTP handlers,
 // so shared schemas live here. Every object is .strict(): unknown keys are rejected.
@@ -146,9 +153,6 @@ export const choirScheduleCreate = z.object(choirScheduleFields).strict()
 export const choirScheduleUpdate = z.object(choirScheduleFields).partial().strict()
 
 // ── Administration and Charity (ministry workspaces) ─────────────────────────────────────────────
-import { amount } from '@/lib/api/validation'
-import { TASK_STATUSES } from '@/lib/ministries/administration'
-import { AID_STATUSES } from '@/lib/ministries/charity'
 
 /** Birr amounts in DECIMAL(10,2) columns. */
 const birr = amount.max(99_999_999.99)
@@ -190,8 +194,6 @@ export const charityDistributionUpdate = z.object(charityDistributionFields).omi
 
 // Children's Ministry and Youth Ministry (docs/MINISTRY_WORKSPACES.md) ------------------------------
 // (imports kept with this block so the ministries' additions don't collide at the top of the file)
-import { ATTENDANCE_STATUSES, TEACHER_ROLES } from '@/lib/ministries/children'
-import { YOUTH_PROGRAM_TYPES } from '@/lib/ministries/youth'
 
 const childrenClassFields = {
   name: text(200),
@@ -303,8 +305,6 @@ export const workersAidMonthlyRun = z.object({ disbursement_date: date }).strict
 
 // ---- Mission and Prayer Groups ministries (app/dashboard/ministry/mission, …/prayer-groups) ----
 // The imports sit with this block so it merges cleanly beside the other ministries' blocks.
-import { MISSION_TRIP_STATUSES } from '@/lib/ministries/mission'
-import { PRAYER_REQUEST_STATUSES } from '@/lib/ministries/prayer'
 
 const missionTripFields = {
   title: text(200),
@@ -353,9 +353,6 @@ export const prayerRequestUpdate = z
 
 // Stage & Worship, Teaching & Seminar, Marriage & Family workspaces ---------------------------
 // (imports kept with the block so the ministry blocks merge without touching the file's head)
-
-import { EQUIPMENT_STATUS_VALUES, WORSHIP_TYPE_VALUES } from '@/lib/ministries/stage-worship'
-import { ENROLLMENT_STATUS_VALUES, MATERIAL_TYPE_VALUES, PROGRAM_TYPE_VALUES } from '@/lib/ministries/teaching'
 
 const place = z.string().trim().max(200)
 
