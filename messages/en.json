@@ -12,7 +12,7 @@
     "logout": "Logout"
   },
   "Auth": {
-    "title": "Lebbu Kale Heywet",
+    "title": "Lebu Kale Hiwot",
     "subtitle": "Church Management Platform",
     "welcomeBack": "Welcome Back",
     "signInPrompt": "Sign in to access your dashboard",
@@ -24,7 +24,7 @@
     "signingIn": "Signing in...",
     "noAccount": "Don't have an account? ",
     "createOne": "Create one",
-    "footer": "\u00a9 2024 Lebbu Kale Heywet Church. All rights reserved."
+    "footer": "© Lebu Kale Hiwot Church"
   },
   "Sidebar": {
     "appName": "LKHC",

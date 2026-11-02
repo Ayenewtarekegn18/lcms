@@ -45,19 +45,19 @@ export function DeleteTransactionDialog({ entry, onClose, onDeleted }: {
           <DialogDescription>It is removed from the ledger and from the totals. This cannot be undone.</DialogDescription>
         </DialogHeader>
         {entry && (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-slate-50 p-4 text-sm">
-            <dt className="text-slate-500">Date</dt>
-            <dd className="text-slate-900">{formatLedgerDate(entry.transaction_date)}</dd>
-            <dt className="text-slate-500">Type</dt>
-            <dd className="text-slate-900">{entry.transaction_type === 'income' ? 'Income' : 'Expense'}</dd>
-            <dt className="text-slate-500">Category</dt>
-            <dd className="text-slate-900">{entry.category || UNCATEGORIZED}</dd>
-            <dt className="text-slate-500">Amount</dt>
-            <dd className="font-medium text-slate-900">{formatBirr(entry.amount)}</dd>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-muted p-4 text-sm">
+            <dt className="text-muted-foreground">Date</dt>
+            <dd className="text-foreground">{formatLedgerDate(entry.transaction_date)}</dd>
+            <dt className="text-muted-foreground">Type</dt>
+            <dd className="text-foreground">{entry.transaction_type === 'income' ? 'Income' : 'Expense'}</dd>
+            <dt className="text-muted-foreground">Category</dt>
+            <dd className="text-foreground">{entry.category || UNCATEGORIZED}</dd>
+            <dt className="text-muted-foreground">Amount</dt>
+            <dd className="font-medium text-foreground">{formatBirr(entry.amount)}</dd>
             {entry.description && (
               <>
-                <dt className="text-slate-500">Description</dt>
-                <dd className="text-slate-900 break-words">{entry.description}</dd>
+                <dt className="text-muted-foreground">Description</dt>
+                <dd className="text-foreground break-words">{entry.description}</dd>
               </>
             )}
           </dl>

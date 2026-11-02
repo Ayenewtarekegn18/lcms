@@ -93,12 +93,12 @@ export function MemberRegistrationForm() {
 
   if (saved) {
     return (
-      <Card className="mx-auto max-w-lg border-green-200 bg-white">
+      <Card className="mx-auto max-w-lg border-green-200 bg-card">
         <CardContent className="space-y-4 py-8 text-center">
           <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" aria-hidden />
           <div>
-            <p className="text-sm text-slate-500">ተመዝግቧል · Member registered</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">{saved.name}</p>
+            <p className="text-sm text-muted-foreground">ተመዝግቧል · Member registered</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{saved.name}</p>
             <p className="mt-2 font-mono text-3xl font-semibold tracking-wide text-green-700" data-testid="member-number">{saved.member_number}</p>
           </div>
           {saved.photo === 'failed' && (
@@ -168,9 +168,9 @@ export function MemberRegistrationForm() {
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       <div className="space-y-6">
         {SECTIONS.map((s) => (
-          <Card key={s.id} className="bg-white">
+          <Card key={s.id} className="bg-card">
             <CardHeader>
-              <CardTitle className="text-lg">{s.am} <span className="font-normal text-slate-500">· {s.en}</span></CardTitle>
+              <CardTitle className="text-lg">{s.am} <span className="font-normal text-muted-foreground">· {s.en}</span></CardTitle>
               {s.note && <CardDescription>{s.note}</CardDescription>}
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -182,19 +182,19 @@ export function MemberRegistrationForm() {
 
       <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
         <PhotoPanel value={photo} onChange={setPhoto} />
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <h4 className="text-sm font-semibold text-slate-900">የመታወቂያ ቁጥር <span className="font-normal text-slate-500">· Member number</span></h4>
-          <p className="mt-1 text-xs text-slate-500">Assigned automatically in sequence when you save.</p>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h4 className="text-sm font-semibold text-foreground">የመታወቂያ ቁጥር <span className="font-normal text-muted-foreground">· Member number</span></h4>
+          <p className="mt-1 text-xs text-muted-foreground">Assigned automatically in sequence when you save.</p>
           <p className="mt-2 font-mono text-xl font-semibold text-green-700" data-testid="next-member-number">{nextNumber ?? '—'}</p>
         </div>
       </aside>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:col-span-2">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:col-span-2">
         <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'አስቀምጥ · Save member'}</Button>
         <Button type="button" variant="ghost" onClick={() => { reset(emptyRegistration()); setPhoto(null) }} disabled={isSubmitting}>
           Clear form
         </Button>
-        <span className="text-xs text-slate-500">Fields marked * are required; everything else can be filled in later.</span>
+        <span className="text-xs text-muted-foreground">Fields marked * are required; everything else can be filled in later.</span>
       </div>
     </form>
   )

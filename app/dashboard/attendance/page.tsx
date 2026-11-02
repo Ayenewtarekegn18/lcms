@@ -56,7 +56,7 @@ function StatusBadge({ status }: { status: string | null }) {
   const known = isAttendanceStatus(status) ? status : null
   return (
     <span
-      className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${known ? STATUS_STYLES[known].badge : 'bg-slate-100 text-slate-700'}`}
+      className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${known ? STATUS_STYLES[known].badge : 'bg-muted text-foreground'}`}
     >
       {known ? STATUS_LABELS[known] : status || '—'}
     </span>
@@ -200,24 +200,24 @@ export default function AttendancePage() {
   const counts = list?.counts
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-muted p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Attendance</h1>
-        <p className="text-slate-500 mt-2">Take attendance for an event and see who came</p>
+        <h1 className="text-4xl font-bold text-foreground">Attendance</h1>
+        <p className="text-muted-foreground mt-2">Take attendance for an event and see who came</p>
       </div>
 
-      <Card className="bg-white border-slate-200 mb-6">
+      <Card className="bg-card border-border mb-6">
         <CardHeader>
-          <CardTitle className="text-slate-900">Event</CardTitle>
+          <CardTitle className="text-foreground">Event</CardTitle>
           <CardDescription>Choose the event and day to take attendance for</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="attendance-event">Event</Label>
             {eventsLoading ? (
-              <p className="text-sm text-slate-500">Loading events...</p>
+              <p className="text-sm text-muted-foreground">Loading events...</p>
             ) : events.length === 0 ? (
-              <p className="text-sm text-slate-500">No events yet. Create one on the events page first.</p>
+              <p className="text-sm text-muted-foreground">No events yet. Create one on the events page first.</p>
             ) : (
               <Select value={eventId} onValueChange={pickEvent}>
                 <SelectTrigger id="attendance-event" aria-label="Event" className="w-full">
@@ -237,7 +237,7 @@ export default function AttendancePage() {
             <div className="grid gap-2">
               <Label htmlFor="attendance-day">Day</Label>
               {event.first === event.last ? (
-                <p id="attendance-day" className="text-sm text-slate-700 py-2">{formatDay(day)}</p>
+                <p id="attendance-day" className="text-sm text-foreground py-2">{formatDay(day)}</p>
               ) : (
                 <Input
                   id="attendance-day"
@@ -257,10 +257,10 @@ export default function AttendancePage() {
         <>
           <div className="grid gap-4 md:grid-cols-4 mb-6" data-testid="attendance-counts">
             {(['total', ...ATTENDANCE_STATUSES] as const).map((key) => (
-              <Card key={key} className="bg-white border-slate-200">
+              <Card key={key} className="bg-card border-border">
                 <CardHeader className="pb-2">
                   <CardDescription>{key === 'total' ? 'Recorded' : STATUS_LABELS[key]}</CardDescription>
-                  <CardTitle className="text-3xl text-slate-900" data-testid={`count-${key}`}>
+                  <CardTitle className="text-3xl text-foreground" data-testid={`count-${key}`}>
                     {counts ? (key === 'total' ? list.total : counts[key]) : '—'}
                   </CardTitle>
                 </CardHeader>
@@ -268,9 +268,9 @@ export default function AttendancePage() {
             ))}
           </div>
 
-          <Card className="bg-white border-slate-200 mb-6">
+          <Card className="bg-card border-border mb-6">
             <CardHeader>
-              <CardTitle className="text-slate-900">Members</CardTitle>
+              <CardTitle className="text-foreground">Members</CardTitle>
               <CardDescription>
                 Mark each member, then save. {pending > 0 ? `${pending} unsaved change${pending === 1 ? '' : 's'}.` : ''}
               </CardDescription>
@@ -293,29 +293,29 @@ export default function AttendancePage() {
               </div>
 
               {rosterLoading && roster.length === 0 ? (
-                <p className="text-center py-8 text-slate-500">Loading members...</p>
+                <p className="text-center py-8 text-muted-foreground">Loading members...</p>
               ) : roster.length === 0 ? (
-                <p className="text-center py-8 text-slate-500">No members found</p>
+                <p className="text-center py-8 text-muted-foreground">No members found</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50">
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Member</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Number</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
+                      <tr className="border-b border-border bg-muted">
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Member</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Number</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {roster.map((member) => {
                         const current = marks[member.id] ?? member.record?.status ?? null
                         return (
-                          <tr key={member.id} className="border-b border-slate-200" data-testid="roster-row">
-                            <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                          <tr key={member.id} className="border-b border-border" data-testid="roster-row">
+                            <td className="px-4 py-3 text-sm font-medium text-foreground">
                               {member.name}
                               {marks[member.id] && <span className="ml-2 text-xs text-amber-600">unsaved</span>}
                             </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">{member.memberNumber ?? '—'}</td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">{member.memberNumber ?? '—'}</td>
                             <td className="px-4 py-3">
                               <div className="flex gap-2" role="group" aria-label={`Status for ${member.name}`}>
                                 {ATTENDANCE_STATUSES.map((status) => (
@@ -342,7 +342,7 @@ export default function AttendancePage() {
               )}
 
               {rosterTotal > PAGE_SIZE && (
-                <div className="flex items-center justify-between mt-4 text-sm text-slate-600">
+                <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
                   <span>
                     {offset + 1}–{Math.min(offset + PAGE_SIZE, rosterTotal)} of {rosterTotal}
                   </span>
@@ -369,37 +369,37 @@ export default function AttendancePage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-slate-200">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-slate-900">Saved records</CardTitle>
+              <CardTitle className="text-foreground">Saved records</CardTitle>
               <CardDescription>
                 {event.title} · {formatDay(day)}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {listLoading && !list ? (
-                <p className="text-center py-8 text-slate-500">Loading records...</p>
+                <p className="text-center py-8 text-muted-foreground">Loading records...</p>
               ) : !list || list.records.length === 0 ? (
-                <p className="text-center py-8 text-slate-500">No attendance recorded for this day yet</p>
+                <p className="text-center py-8 text-muted-foreground">No attendance recorded for this day yet</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50">
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Member</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-slate-900">Recorded by</th>
+                      <tr className="border-b border-border bg-muted">
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Member</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Recorded by</th>
                         <th className="px-4 py-3" />
                       </tr>
                     </thead>
                     <tbody>
                       {list.records.map((record) => (
-                        <tr key={record.id} className="border-b border-slate-200 hover:bg-slate-50" data-testid="record-row">
-                          <td className="px-4 py-3 text-sm font-medium text-slate-900">{record.member_name}</td>
+                        <tr key={record.id} className="border-b border-border hover:bg-muted" data-testid="record-row">
+                          <td className="px-4 py-3 text-sm font-medium text-foreground">{record.member_name}</td>
                           <td className="px-4 py-3 text-sm">
                             <StatusBadge status={record.status} />
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{record.recorded_by_name ?? '—'}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{record.recorded_by_name ?? '—'}</td>
                           <td className="px-4 py-3 text-right">
                             <Button
                               variant="ghost"
@@ -415,7 +415,7 @@ export default function AttendancePage() {
                     </tbody>
                   </table>
                   {list.total > list.records.length && (
-                    <p className="text-xs text-slate-500 mt-3">
+                    <p className="text-xs text-muted-foreground mt-3">
                       Showing {list.records.length} of {list.total} records
                     </p>
                   )}

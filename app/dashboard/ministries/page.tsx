@@ -95,10 +95,10 @@ export default function MinistriesPage() {
   })
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-muted p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Ministries</h1>
-        <p className="text-slate-500 mt-2">Manage church ministries and their activities</p>
+        <h1 className="text-4xl font-bold text-foreground">Ministries</h1>
+        <p className="text-muted-foreground mt-2">Manage church ministries and their activities</p>
       </div>
 
       <div className="mb-6">
@@ -149,46 +149,46 @@ export default function MinistriesPage() {
         </DialogContent>
       </Dialog>
 
-      <Card className="bg-white border-slate-200">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-slate-900">Ministries</CardTitle>
+          <CardTitle className="text-foreground">Ministries</CardTitle>
           <CardDescription>{loading && ministries.length === 0 ? 'Loading…' : `${ministries.length} active ministries`}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading && ministries.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-slate-500">Loading ministries...</p>
+              <p className="text-muted-foreground">Loading ministries...</p>
             </div>
           ) : failed && ministries.length === 0 ? (
             <div className="text-center py-12 space-y-3">
-              <p className="text-slate-500">The ministries could not be loaded.</p>
+              <p className="text-muted-foreground">The ministries could not be loaded.</p>
               <Button variant="outline" onClick={fetchMinistries} disabled={loading}>Try again</Button>
             </div>
           ) : ministries.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-slate-500">No ministries yet. Use + Add Ministry to create the first one.</p>
+              <p className="text-muted-foreground">No ministries yet. Use + Add Ministry to create the first one.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Name</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Description</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Schedule</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
+                  <tr className="border-b border-border bg-muted">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Name</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Description</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Schedule</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ministries.map((ministry) => (
-                    <tr key={ministry.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">
+                    <tr key={ministry.id} className="border-b border-border hover:bg-muted transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-foreground">
                         {ministry.name}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {ministry.description || '-'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
                         {[ministry.meeting_day, ministry.meeting_time].filter(Boolean).join(' ') || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm">

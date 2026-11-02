@@ -7,14 +7,14 @@ import { ethiopianLabel } from '@/lib/ethiopian-calendar'
 import { NOT_SERVING, type FieldDef, type Opt } from '@/lib/members/registration'
 
 export const selectClass =
-  'border-input h-9 w-full rounded-md border bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive'
+  'border-input h-9 w-full rounded-md border bg-card px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive'
 
 /** "ስም · First name *", the bilingual label style the lebu-form register uses. */
 export function FieldLabel({ f, htmlFor }: { f: FieldDef; htmlFor?: string }) {
   const Tag = htmlFor ? 'label' : 'span'
   return (
-    <Tag htmlFor={htmlFor} className="text-sm font-medium text-slate-900">
-      {f.am} <span className="font-normal text-slate-500">· {f.en}</span>
+    <Tag htmlFor={htmlFor} className="text-sm font-medium text-foreground">
+      {f.am} <span className="font-normal text-muted-foreground">· {f.en}</span>
       {f.req && <span className="ml-0.5 text-red-600" aria-hidden>*</span>}
     </Tag>
   )
@@ -37,7 +37,7 @@ export function ChipGroup({ f, value, onChange, multiple }: { f: FieldDef; value
         <label
           key={v}
           className={`cursor-pointer select-none rounded-full border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50 ${
-            selected(v) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'
+            selected(v) ? 'border-primary bg-primary text-white' : 'border-input bg-card text-foreground hover:border-input'
           }`}
         >
           <input
@@ -48,7 +48,7 @@ export function ChipGroup({ f, value, onChange, multiple }: { f: FieldDef; value
             onChange={() => toggle(v)}
             className="sr-only"
           />
-          {am} <span className={selected(v) ? 'text-slate-300' : 'text-slate-500'}>· {en}</span>
+          {am} <span className={selected(v) ? 'text-muted-foreground/70' : 'text-muted-foreground'}>· {en}</span>
         </label>
       ))}
     </div>
@@ -71,12 +71,12 @@ export function SpouseSuggestions({ query, onPick }: { query: string; onPick: (m
   }, [query])
   if (!matches.length) return null
   return (
-    <ul className="mt-1 max-h-48 overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-sm" role="listbox" aria-label="Matching members">
+    <ul className="mt-1 max-h-48 overflow-auto rounded-md border border-border bg-card text-sm shadow-sm" role="listbox" aria-label="Matching members">
       {matches.map((m) => (
         <li key={m.id}>
-          <button type="button" className="flex w-full justify-between px-3 py-2 text-left hover:bg-slate-50" onClick={() => { onPick(m); setMatches([]) }}>
+          <button type="button" className="flex w-full justify-between px-3 py-2 text-left hover:bg-muted" onClick={() => { onPick(m); setMatches([]) }}>
             <span>{m.name}</span>
-            {m.memberNumber && <span className="font-mono text-xs text-slate-500">{m.memberNumber}</span>}
+            {m.memberNumber && <span className="font-mono text-xs text-muted-foreground">{m.memberNumber}</span>}
           </button>
         </li>
       ))}
@@ -98,7 +98,7 @@ export function SimpleInput({ f, value, onChange, invalid, describedBy }: {
     )
   }
   if (f.t === 'textarea') {
-    return <Textarea {...common} rows={3} value={value} onChange={(e) => onChange(e.target.value)} className="bg-white" />
+    return <Textarea {...common} rows={3} value={value} onChange={(e) => onChange(e.target.value)} className="bg-card" />
   }
   const type = f.t === 'number' ? 'number' : f.t === 'date' ? 'date' : f.t === 'tel' ? 'tel' : f.t === 'email' ? 'email' : 'text'
   return (
@@ -113,9 +113,9 @@ export function SimpleInput({ f, value, onChange, invalid, describedBy }: {
         autoComplete={f.t === 'tel' ? 'tel' : f.t === 'email' ? 'email' : 'off'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-white"
+        className="bg-card"
       />
-      {f.ec && value && <p className="mt-1 text-xs text-slate-500">{ethiopianLabel(value)}</p>}
+      {f.ec && value && <p className="mt-1 text-xs text-muted-foreground">{ethiopianLabel(value)}</p>}
     </>
   )
 }

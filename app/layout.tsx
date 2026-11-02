@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/components/i18n-provider";
-import { noto_ethiopic, varela_round } from "@/lib/fonts";
+import { karla, noto_ethiopic, noto_serif_ethiopic } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lebbu Kale Heywet Church - Digital Management Platform",
-  description: "A centralized platform for church operations, ministry management, and member services.",
+  title: { default: "Lebu Kale Hiwot Church", template: "%s · Lebu Kale Hiwot Church" },
+  description: "Church management for Lebu Kale Hiwot Church: members, ministries, events, attendance and finances.",
 };
 
 export default function RootLayout({
@@ -16,12 +16,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${varela_round.variable} ${noto_ethiopic.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${karla.variable} ${noto_ethiopic.variable} ${noto_serif_ethiopic.variable}`}>
       <body className="antialiased">
         <I18nProvider>
-          {/* Light only for now: pages still hard-code light colours (bg-white, text-slate-*), so following
-              a dark system theme gives unreadable mixed pages. Turn the system theme back on once the
-              pages use the colour tokens (docs/REMEDIATION_GUIDE.md, FE.6). */}
+          {/* Light only for now: the church theme (app/globals.css) has no dark colours yet. */}
           <ThemeProvider
             attribute="class"
             defaultTheme="light"

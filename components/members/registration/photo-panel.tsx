@@ -97,16 +97,16 @@ export function PhotoPanel({ value, onChange }: PhotoPanelProps) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <h4 className="text-sm font-semibold text-slate-900">
-        ፎቶግራፍ <span className="font-normal text-slate-500">· Photo</span>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <h4 className="text-sm font-semibold text-foreground">
+        ፎቶግራፍ <span className="font-normal text-muted-foreground">· Photo</span>
       </h4>
-      <p className="mt-1 text-xs text-slate-500">Optional. A head-and-shoulders portrait prints best on the ID card.</p>
-      <div className="mx-auto mt-3 aspect-[4/5] w-40 overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-50">
+      <p className="mt-1 text-xs text-muted-foreground">Optional. A head-and-shoulders portrait prints best on the ID card.</p>
+      <div className="mx-auto mt-3 aspect-[4/5] w-40 overflow-hidden rounded-md border border-dashed border-input bg-muted">
         {preview ? (
           <img src={preview} alt="Member photo preview" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center text-center text-xs text-slate-400">No photo yet<br />ፎቶ የለም</div>
+          <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">No photo yet<br />ፎቶ የለም</div>
         )}
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-2">

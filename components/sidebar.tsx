@@ -3,6 +3,7 @@
 import { useTranslation } from 'react-i18next'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { LanguageSelector } from '@/components/language-selector'
 import { LayoutDashboard, Users, Building2, Wallet, Calendar, FileText, Settings, LogOut } from 'lucide-react'
 import { PAGE_ACCESS, ROLES, type Role } from '@/lib/auth/roles'
+import { CHURCH_NAME_AM, CHURCH_NAME_EN, LOGO_MARK } from '@/lib/brand'
 
 // Which links each role sees comes from PAGE_ACCESS, the same table the
 // server-side section layouts enforce. Hiding a link is only a convenience.
@@ -60,13 +62,16 @@ export function SidebarContent({ user, role, onNavigate }: SidebarContentProps) 
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="p-6 border-b border-slate-200">
-        <p className="text-2xl font-bold text-slate-900">{t('Sidebar.appName')}</p>
-        <p className="text-xs text-slate-500 mt-1">{t('Sidebar.appTagline')}</p>
+    <div className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
+      <div className="border-b-[3px] border-[#0C1B3F] px-5 pb-5 pt-6">
+        <Image src={LOGO_MARK.white} alt="" width={LOGO_MARK.width} height={LOGO_MARK.height} priority className="h-11 w-auto" />
+        <p className="mt-3 font-display text-[17px] font-bold leading-snug" lang="am">{CHURCH_NAME_AM}</p>
+        <p className="mt-1 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#C3D4F7]">
+          {CHURCH_NAME_EN} · {t('Sidebar.appTagline')}
+        </p>
       </div>
 
-      <nav aria-label={t('Sidebar.navLabel')} className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav aria-label={t('Sidebar.navLabel')} className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navItems.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
@@ -76,10 +81,10 @@ export function SidebarContent({ user, role, onNavigate }: SidebarContentProps) 
               href={item.href}
               onClick={onNavigate}
               aria-current={active ? 'page' : undefined}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sidebar-ring ${
                 active
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                  : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               }`}
             >
               <Icon className="w-4 h-4" aria-hidden="true" />
@@ -89,17 +94,17 @@ export function SidebarContent({ user, role, onNavigate }: SidebarContentProps) 
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-200 space-y-3">
+      <div className="space-y-3 border-t border-sidebar-border p-4">
         <LanguageSelector />
         <div className="text-xs">
-          <p className="text-slate-500">{t('Sidebar.account')}</p>
-          <p className="font-medium text-slate-900 truncate mt-1">{user.email}</p>
+          <p className="text-[#C3D4F7]">{t('Sidebar.account')}</p>
+          <p className="mt-1 truncate font-medium">{user.email}</p>
         </div>
         <Button
           onClick={handleLogout}
           disabled={isLoading}
           variant="outline"
-          className="w-full text-sm border-slate-300 hover:bg-slate-50 bg-transparent"
+          className="w-full border-sidebar-border bg-transparent text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <LogOut className="w-4 h-4 mr-2" aria-hidden="true" />
           {isLoading ? t('Sidebar.loggingOut') : t('Sidebar.logout')}
@@ -112,7 +117,7 @@ export function SidebarContent({ user, role, onNavigate }: SidebarContentProps) 
 /** Desktop sidebar (md and up). On phones the same content opens from the top bar (components/mobile-nav.tsx). */
 export function Sidebar({ user, role }: SidebarProps) {
   return (
-    <aside className="hidden md:flex w-64 h-screen bg-white border-r border-slate-200 flex-col fixed left-0 top-0">
+    <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col md:flex">
       <SidebarContent user={user} role={role} />
     </aside>
   )

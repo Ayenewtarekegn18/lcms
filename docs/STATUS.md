@@ -50,8 +50,8 @@ The 10 orphan pages (community, counseling, education, facilities, health, media
 | Production build | ✅ passes; `npm audit` clean |
 | Database reproducible from repo | ✅ dbmate migrations with up and down, round trip tested in CI; the live project needs adopting once ([1.1](REMEDIATION_GUIDE.md#11-make-the-schema-reproducible)) |
 | English / Amharic | 🟡 infrastructure works; about 1% of the UI is translated ([3.4](REMEDIATION_GUIDE.md#34-amharic-for-real)) |
-| Mobile | ❌ fixed sidebar; the login and registration pages fit a phone ([FE.1](REMEDIATION_GUIDE.md#fe1-responsive-app-shell)) |
-| Frontend consistency | ❌ mixed patterns, mock figures, broken dark mode ([Frontend & UI track](REMEDIATION_GUIDE.md#frontend--ui-track)) |
+| Mobile | ✅ phone top bar with a menu drawer; lists become cards; e2e checks there's no sideways scroll at 360 and 390 px ([FE.1](REMEDIATION_GUIDE.md#fe1-responsive-app-shell)) |
+| Look and feel | ✅ / 🟡 the church's brand from the member registry (lebu-form): church blue, the open-book logo (also the favicon), Karla and Noto Ethiopic; every page uses the theme colours. Light mode only for now ([Frontend & UI track](REMEDIATION_GUIDE.md#frontend--ui-track)) |
 | Tests / CI | ✅ unit, migration, RLS and e2e tests on every PR; deploy job ready to configure ([3.6](REMEDIATION_GUIDE.md#36-tests-and-ci), [SETUP §7](SETUP.md#7-cicd)) |
 | Keep-warm | ✅ every 10 minutes once the secrets are set ([SETUP §8](SETUP.md#8-keep-warm-ping)) |
 | Backups / monitoring | ⬜ ([0.6](REMEDIATION_GUIDE.md#06-stop-the-project-from-silently-disappearing), [3.7](REMEDIATION_GUIDE.md#37-observability), [3.8](REMEDIATION_GUIDE.md#38-backups-and-disaster-recovery)) |
