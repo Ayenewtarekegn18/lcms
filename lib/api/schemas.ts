@@ -141,3 +141,68 @@ const choirScheduleFields = {
 }
 export const choirScheduleCreate = z.object(choirScheduleFields).strict()
 export const choirScheduleUpdate = z.object(choirScheduleFields).partial().strict()
+
+// Children's Ministry and Youth Ministry (docs/MINISTRY_WORKSPACES.md) ------------------------------
+// (imports kept with this block so the ministries' additions don't collide at the top of the file)
+import { ATTENDANCE_STATUSES, TEACHER_ROLES } from '@/lib/ministries/children'
+import { YOUTH_PROGRAM_TYPES } from '@/lib/ministries/youth'
+
+const childrenClassFields = {
+  name: text(200),
+  age_group: opt(z.string().trim().max(50)),
+  schedule_text: opt(z.string().trim().max(200)),
+  location: opt(z.string().trim().max(200)),
+}
+export const childrenClassCreate = z.object(childrenClassFields).strict()
+export const childrenClassUpdate = z.object(childrenClassFields).partial().strict()
+
+/** POST /api/children-class-teachers (one row per person and class: (class_id, member_id) is unique). */
+export const childrenTeacherCreate = z
+  .object({ class_id: uuid, member_id: uuid, role: opt(z.enum(TEACHER_ROLES)) })
+  .strict()
+/** PATCH /api/children-class-teachers/[id]: the person can't change; the class and role can. */
+export const childrenTeacherUpdate = z
+  .object({ class_id: uuid, role: opt(z.enum(TEACHER_ROLES)) })
+  .partial()
+  .strict()
+
+const childrenCurriculumFields = {
+  class_id: opt(uuid),
+  title: text(200),
+  description: opt(notes),
+  url: opt(z.string().trim().url().max(500)),
+}
+export const childrenCurriculumCreate = z.object(childrenCurriculumFields).strict()
+export const childrenCurriculumUpdate = z.object(childrenCurriculumFields).partial().strict()
+
+/** POST /api/children-attendance: mark a child on a day (marking again changes the mark). */
+export const childrenAttendanceCreate = z
+  .object({ class_id: uuid, member_id: uuid, attendance_date: date, status: z.enum(ATTENDANCE_STATUSES).default('present') })
+  .strict()
+/** PATCH /api/children-attendance/[id]: only the mark changes. */
+export const childrenAttendanceUpdate = z.object({ status: z.enum(ATTENDANCE_STATUSES) }).strict()
+
+const youthProgramFields = {
+  name: text(200),
+  description: opt(notes),
+  age_range: opt(z.string().trim().max(50)),
+  program_date: date,
+  location: opt(z.string().trim().max(200)),
+  leader_id: opt(uuid),
+  max_participants: opt(z.number().int().min(1).max(100_000)),
+  program_type: opt(z.enum(YOUTH_PROGRAM_TYPES)),
+  is_active: z.boolean().optional(),
+}
+export const youthProgramCreate = z.object(youthProgramFields).strict()
+export const youthProgramUpdate = z.object(youthProgramFields).partial().strict()
+
+/** POST /api/youth-mentorship (one mentor per young person: youth_mentorship.mentee_id is unique). */
+export const youthMentorshipCreate = z
+  .object({ mentee_id: uuid, mentor_id: uuid, start_date: opt(date), notes: opt(notes), is_active: z.boolean().optional() })
+  .strict()
+  .refine((m) => m.mentee_id !== m.mentor_id, { message: 'Choose someone other than the mentee', path: ['mentor_id'] })
+/** PATCH /api/youth-mentorship/[id]: the pair can't change; the start date, notes and active flag can. */
+export const youthMentorshipUpdate = z
+  .object({ start_date: opt(date), notes: opt(notes), is_active: z.boolean() })
+  .partial()
+  .strict()
