@@ -1,35 +1,18 @@
-import { NextResponse } from 'next/server'
-import { requireRole, dbError } from '@/lib/auth/guards'
-import { STAFF } from '@/lib/auth/roles'
-import { parseBody, pageRange, cleanSearch } from '@/lib/api/validation'
+import { z } from 'zod'
+import { collectionRoutes } from '@/lib/api/collection'
 import { womenActivity } from '@/lib/api/schemas'
+import { WOMEN_ACTIVITY_STATUSES } from '@/lib/ministries/women'
+import { ROLES, STAFF } from '@/lib/auth/roles'
 
-export async function GET(req: Request) {
-  const auth = await requireRole()
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-  const search = cleanSearch(searchParams.get('search'))
-  const status = womenActivity.shape.status.safeParse(searchParams.get('status') ?? undefined)
-
-  let query = auth.supabase.from('women_activities').select('*').order('activity_date', { ascending: false, nullsFirst: false })
-  if (status.success && status.data) query = query.eq('status', status.data)
-  if (search) query = query.ilike('title', `%${search}%`)
-  const { data, error } = await query.range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, womenActivity)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase
-    .from('women_activities')
-    .insert([{ ...body.data, status: body.data.status ?? 'proposed', volunteers_count: body.data.volunteers_count ?? 0 }])
-    .select()
-    .single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Women's Ministry service activities (women_activities is member-readable under RLS; staff write).
+//   GET ?search= (title) &status= &limit=&offset=   POST { title, activity_date?, status?, volunteers_count? }
+const list = collectionRoutes({
+  table: 'women_activities',
+  roles: { read: ROLES, write: STAFF },
+  create: womenActivity,
+  filters: { status: z.enum(WOMEN_ACTIVITY_STATUSES) },
+  search: { columns: ['title'] },
+  order: { column: 'activity_date', ascending: false },
+})
+export const GET = list.GET
+export const POST = list.POST
