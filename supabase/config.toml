@@ -35,7 +35,8 @@ file_size_limit = "10MiB"
 
 [auth]
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:3000", "http://127.0.0.1:3000"]
+# 3100: the e2e server (playwright.config.ts), so password-reset links come back to it.
+additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**", "http://localhost:3100/**"]
 # Invitation only: an admin adds people (Authentication → Users → Invite). No public sign-up.
 enable_signup = false
 enable_anonymous_sign_ins = false

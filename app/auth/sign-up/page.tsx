@@ -3,6 +3,7 @@
 import React from "react"
 
 import { createClient } from '@/lib/supabase/client'
+import { passwordProblem } from '@/lib/auth/password'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -39,8 +40,9 @@ export default function SignUpPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    const problem = passwordProblem(password)
+    if (problem) {
+      setError(problem)
       setIsLoading(false)
       return
     }
