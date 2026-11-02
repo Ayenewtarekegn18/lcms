@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { authFile, serviceSelect } from '../helpers'
 import { TEST_USERS } from '../users'
@@ -6,7 +7,7 @@ import { TEST_USERS } from '../users'
 // through /api/admin-tasks, which only staff may use (RLS: admin_tasks is staff-only).
 
 const unique = (label: string) =>
-  `${label} ${test.info().testId.slice(0, 6)}${test.info().retry}-${Math.random().toString(36).slice(2, 8)}`
+  `${label} ${test.info().testId.slice(0, 6)}${test.info().retry}-${randomUUID().slice(0, 8)}`
 
 const ZERO = '00000000-0000-0000-0000-000000000000'
 

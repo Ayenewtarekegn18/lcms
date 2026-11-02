@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { authFile, serviceSelect } from '../helpers'
 import { TEST_USERS } from '../users'
@@ -7,7 +8,7 @@ import { TEST_USERS } from '../users'
 // signed-in user as the reviewer on the server.
 
 const unique = (label: string) =>
-  `${label} ${test.info().testId.slice(0, 6)}${test.info().retry}-${Math.random().toString(36).slice(2, 8)}`
+  `${label} ${test.info().testId.slice(0, 6)}${test.info().retry}-${randomUUID().slice(0, 8)}`
 
 const ZERO = '00000000-0000-0000-0000-000000000000'
 const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`

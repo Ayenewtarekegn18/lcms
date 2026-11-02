@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { serviceSelect } from './helpers'
 
@@ -8,7 +9,7 @@ export const ZERO = '00000000-0000-0000-0000-000000000000'
 
 /** A name no other run or test uses. */
 export const unique = (label: string) =>
-  `${label} ${test.info().testId.slice(0, 6)}${test.info().retry}-${Math.random().toString(36).slice(2, 8)}`
+  `${label} ${test.info().testId.slice(0, 6)}${test.info().retry}-${randomUUID().slice(0, 8)}`
 
 /** <main> is the scroll container, so overflow can hide inside it without widening the document. */
 export const fitsWidth = (page: Page) =>

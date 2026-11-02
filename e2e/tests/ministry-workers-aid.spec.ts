@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { authFile, serviceSelect } from '../helpers'
 import { TEST_USERS } from '../users'
@@ -5,7 +6,7 @@ import { TEST_USERS } from '../users'
 // Monthly Workers Aid workspace: beneficiaries and their payments are confidential (RLS: admin and elder
 // only). Totals per month and "record this month's payments" come from /api/workers-aid-disbursements/months.
 
-const token = () => Math.random().toString(36).slice(2, 8)
+const token = () => randomUUID().slice(0, 8)
 const ZERO = '00000000-0000-0000-0000-000000000000'
 
 const fitsWidth = (page: Page) =>

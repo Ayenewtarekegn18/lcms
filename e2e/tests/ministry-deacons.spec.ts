@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { authFile, serviceSelect } from '../helpers'
 import { TEST_USERS } from '../users'
@@ -5,7 +6,7 @@ import { TEST_USERS } from '../users'
 // Deacons workspace: care visits and support cases are confidential (RLS: admin and elder only), so the
 // routes refuse members and ministry leaders, and leaders see a "confidential" note instead of the lists.
 
-const token = () => Math.random().toString(36).slice(2, 8)
+const token = () => randomUUID().slice(0, 8)
 const ZERO = '00000000-0000-0000-0000-000000000000'
 
 const fitsWidth = (page: Page) =>
