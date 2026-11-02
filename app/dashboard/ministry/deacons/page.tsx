@@ -62,10 +62,10 @@ const supportCases = defineResourceTab<SupportCase>({
   columns: [
     { key: 'member', header: 'Member', primary: true, cell: (c) => nameOf(c.member) },
     { key: 'case_type', header: 'Type', cell: (c) => c.case_type || muted('—') },
-    { key: 'description', header: 'Description', className: 'max-w-xs truncate' },
-    { key: 'status', header: 'Status', cell: statusBadge },
+    { key: 'description', header: 'Description', className: 'max-w-[14rem] truncate' },
+    { key: 'status', header: 'Status', className: 'whitespace-nowrap', cell: statusBadge },
     { key: 'deacon', header: 'Assigned to', cell: (c) => (c.deacon ? memberName(c.deacon) : muted('Not assigned')) },
-    { key: 'created_at', header: 'Opened', hideOnMobile: true, cell: (c) => formatDate(c.created_at) ?? muted('—') },
+    { key: 'created_at', header: 'Opened', hideOnMobile: true, className: 'whitespace-nowrap', cell: (c) => formatDate(c.created_at) ?? muted('—') },
   ],
   fields: [
     { name: 'member_id', label: 'Member', type: 'member', required: true, createOnly: true },
