@@ -10,7 +10,8 @@
 // Needs NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL), SUPABASE_SERVICE_ROLE_KEY and DEMO_PASSWORD
 // (the password every demo login gets; 12+ characters with upper and lower case and a digit).
 // Logins are <slug>@demo.lkhc.test. Confidential ministries (deacons, charity, workers' aid) get
-// an elder login, because only admins and elders may see that data.
+// an elder login, because only admins and elders may see that data. finance@ and member@demo.lkhc.test
+// cover the other two roles.
 import { createClient } from '@supabase/supabase-js'
 
 const fail = (msg) => { console.error(`✖ ${msg}`); process.exit(1) }
@@ -122,6 +123,12 @@ for (const [i, m] of ministries.entries()) {
     if (s.error) warn(`${m.slug} ${table}`, s.error)
   }
   console.log(`  ${m.slug}: leader, ${members.length} members, 2 events, sample rows`)
+}
+
+// One login for each role that has no ministry: the treasurer and an ordinary member.
+for (const [email, first, role] of [['finance@demo.lkhc.test', 'Finance', 'finance'], ['member@demo.lkhc.test', 'Member', 'member']]) {
+  await login(email, first, 'Demo', role)
+  accounts.push({ ministry: `(${role})`, email, role })
 }
 
 console.log('\nDemo logins (all with the DEMO_PASSWORD you set):')

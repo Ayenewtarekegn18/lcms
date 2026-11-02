@@ -5,6 +5,7 @@
 One login per ministry, for a ministry representative to try their workspace on the staging app. The **Seed demo data** workflow (`.github/workflows/seed-demo.yml`, script `scripts/seed-demo.mjs`) creates:
 
 - a login `<slug>@demo.lkhc.test` per ministry (e.g. `choir@demo.lkhc.test`, `workers-aid@demo.lkhc.test`). Deacons, Charity and Workers' Aid get the `elder` role, because only admins and elders may see that data; the others get `ministry_leader`;
+- `finance@demo.lkhc.test` (role `finance`) and `member@demo.lkhc.test` (role `member`), to see the app as the treasurer and as an ordinary member;
 - 8 demo members in the register, put on each ministry's roster with the login as leader;
 - two upcoming events and a couple of sample rows for every ministry.
 
