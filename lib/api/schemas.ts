@@ -141,3 +141,23 @@ const choirScheduleFields = {
 }
 export const choirScheduleCreate = z.object(choirScheduleFields).strict()
 export const choirScheduleUpdate = z.object(choirScheduleFields).partial().strict()
+
+// Women's Ministry and Spiritual Service workspaces -----------------------------------------------
+// The create schemas are womenMeeting, womenActivity, womenTraining, spiritualClass, spiritualCandidate,
+// baptism and spiritualFollowUp above; these are the matching PATCH schemas and class attendance.
+
+export const womenMeetingUpdate = womenMeeting.partial().strict()
+export const womenActivityUpdate = womenActivity.partial().strict()
+export const womenTrainingUpdate = womenTraining.partial().strict()
+export const spiritualClassUpdate = spiritualClass.partial().strict()
+/** The person a candidate, baptism or follow-up is about can't change; delete and add again instead. */
+export const spiritualCandidateUpdate = spiritualCandidate.omit({ member_id: true }).partial().strict()
+export const baptismUpdate = baptism.omit({ member_id: true }).partial().strict()
+export const spiritualFollowUpUpdate = spiritualFollowUp.omit({ member_id: true }).partial().strict()
+
+/** POST /api/spiritual-class-attendance: one row per person and class (re-adding updates `attended`). */
+export const spiritualClassAttendanceCreate = z
+  .object({ class_id: uuid, member_id: uuid, attended: z.boolean().optional() })
+  .strict()
+/** PATCH /api/spiritual-class-attendance/[id]: present or absent. */
+export const spiritualClassAttendanceUpdate = z.object({ attended: z.boolean() }).strict()

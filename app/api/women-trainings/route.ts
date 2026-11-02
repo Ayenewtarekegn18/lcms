@@ -1,33 +1,15 @@
-import { NextResponse } from 'next/server'
-import { requireRole, dbError } from '@/lib/auth/guards'
-import { STAFF } from '@/lib/auth/roles'
-import { parseBody, pageRange, cleanSearch } from '@/lib/api/validation'
+import { collectionRoutes } from '@/lib/api/collection'
 import { womenTraining } from '@/lib/api/schemas'
+import { ROLES, STAFF } from '@/lib/auth/roles'
 
-export async function GET(req: Request) {
-  const auth = await requireRole()
-  if (auth.error) return auth.error
-  const { searchParams } = new URL(req.url)
-  const search = cleanSearch(searchParams.get('search'))
-
-  let query = auth.supabase.from('women_trainings').select('*').order('training_date', { ascending: false, nullsFirst: false })
-  if (search) query = query.ilike('title', `%${search}%`)
-  const { data, error } = await query.range(...pageRange(searchParams))
-  if (error) return dbError(error)
-  return NextResponse.json(data ?? [])
-}
-
-export async function POST(req: Request) {
-  const auth = await requireRole(...STAFF)
-  if (auth.error) return auth.error
-  const body = await parseBody(req, womenTraining)
-  if (body.error) return body.error
-
-  const { data, error } = await auth.supabase
-    .from('women_trainings')
-    .insert([{ ...body.data, registered_count: body.data.registered_count ?? 0 }])
-    .select()
-    .single()
-  if (error) return dbError(error)
-  return NextResponse.json(data, { status: 201 })
-}
+// Women's Ministry trainings (women_trainings is member-readable under RLS; staff write).
+//   GET ?search= (title, instructor) &limit=&offset=   POST { title, training_date?, instructor_name?, description?, registered_count? }
+const list = collectionRoutes({
+  table: 'women_trainings',
+  roles: { read: ROLES, write: STAFF },
+  create: womenTraining,
+  search: { columns: ['title', 'instructor_name'] },
+  order: { column: 'training_date', ascending: false },
+})
+export const GET = list.GET
+export const POST = list.POST
