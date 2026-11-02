@@ -113,7 +113,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
-            className="h-12"
+            className="h-11"
           />
         </div>
 
@@ -130,7 +130,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
-            className="h-12"
+            className="h-11"
           />
         </div>
 
@@ -140,7 +140,7 @@ export default function LoginPage() {
 
         <Button
           type="submit"
-          className="h-12 w-full font-semibold"
+          className="h-11 w-full font-semibold"
           disabled={isLoading}
         >
           {isLoading ? (

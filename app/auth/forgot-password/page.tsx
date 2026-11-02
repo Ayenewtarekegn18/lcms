@@ -51,10 +51,10 @@ export default function ForgotPasswordPage() {
           <form onSubmit={send} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">{t('Auth.emailLabel')}</Label>
-              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} className="h-12" />
+              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} className="h-11" />
             </div>
             {error && <AuthError>{error}</AuthError>}
-            <Button type="submit" className="h-12 w-full font-semibold" disabled={busy}>
+            <Button type="submit" className="h-11 w-full font-semibold" disabled={busy}>
               {busy ? 'Sending…' : 'Send the reset link'}
             </Button>
           </form>

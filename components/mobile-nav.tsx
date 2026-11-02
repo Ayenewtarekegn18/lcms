@@ -44,18 +44,18 @@ export function MobileNav({ user, role }: MobileNavProps) {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <div className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b-[3px] border-[#0C1B3F] bg-sidebar px-2 text-sidebar-foreground md:hidden">
+      <div className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-card/85 px-2 text-foreground backdrop-blur md:hidden">
         <SheetTrigger asChild>
           <button
             type="button"
             aria-label={t('Sidebar.openMenu')}
-            className="inline-flex size-11 items-center justify-center rounded-md outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            className="inline-flex size-11 items-center justify-center rounded-xl outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Menu className="size-6" aria-hidden="true" />
           </button>
         </SheetTrigger>
-        <Image src={LOGO_MARK.white} alt="" width={LOGO_MARK.width} height={LOGO_MARK.height} className="h-7 w-auto" />
-        <span className="truncate text-base font-semibold">{CHURCH_NAME_EN}</span>
+        <Image src={LOGO_MARK.blue} alt="" width={LOGO_MARK.width} height={LOGO_MARK.height} className="h-6 w-auto" />
+        <span className="truncate text-[15px] font-bold">{CHURCH_NAME_EN}</span>
       </div>
       <SheetContent
         side="left"
@@ -71,7 +71,7 @@ export function MobileNav({ user, role }: MobileNavProps) {
             link.focus()
           }
         }}
-        className="w-[min(85vw,20rem)] border-r-0 bg-sidebar p-0 text-sidebar-foreground sm:max-w-none"
+        className="w-[min(85vw,20rem)] border-r-0 bg-sidebar p-0 sm:max-w-none"
       >
         <SheetTitle className="sr-only">{t('Sidebar.menu')}</SheetTitle>
         <SidebarContent user={user} role={role} onNavigate={() => setOpen(false)} />

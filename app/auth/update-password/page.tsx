@@ -74,7 +74,7 @@ export default function UpdatePasswordPage() {
         <div className="space-y-4 text-center">
           <h1 className="text-2xl font-bold text-foreground">This link has expired</h1>
           <p className="text-muted-foreground">Reset links work once, for one hour. Ask for a new one.</p>
-          <Button asChild className="h-12 w-full font-semibold"><Link href="/auth/forgot-password">Send a new link</Link></Button>
+          <Button asChild className="h-11 w-full font-semibold"><Link href="/auth/forgot-password">Send a new link</Link></Button>
         </div>
       )}
 
@@ -87,14 +87,14 @@ export default function UpdatePasswordPage() {
           <form onSubmit={save} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">New password</Label>
-              <Input id="password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} className="h-12" />
+              <Input id="password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} className="h-11" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="repeat">Type it again</Label>
-              <Input id="repeat" type="password" autoComplete="new-password" required value={repeat} onChange={(e) => setRepeat(e.target.value)} disabled={busy} className="h-12" />
+              <Input id="repeat" type="password" autoComplete="new-password" required value={repeat} onChange={(e) => setRepeat(e.target.value)} disabled={busy} className="h-11" />
             </div>
             {error && <AuthError>{error}</AuthError>}
-            <Button type="submit" className="h-12 w-full font-semibold" disabled={busy}>
+            <Button type="submit" className="h-11 w-full font-semibold" disabled={busy}>
               {busy ? 'Saving…' : 'Save and sign in'}
             </Button>
           </form>
