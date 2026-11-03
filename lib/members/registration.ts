@@ -237,3 +237,73 @@ export function cleanRegistration(input: RegistrationValues): RegistrationValues
   if (!v.status) v.status = 'active'
   return v
 }
+
+// ---- Importing lebu-form records (Members → Import, and scripts/import-lebu-form.mjs)
+
+/** A lebu-form member number: the prefix, a dash and digits (LKH-0001, LKHC-0019). */
+export const MEMBER_NUMBER = /^[A-Z0-9]+-[0-9]+$/
+
+/**
+ * The member records in one lebu-form JSON file: a backup ("Download a backup": { members: [...] }),
+ * the Apps Script list response (the same shape), a plain array, or a single member.
+ */
+export function membersFromJson(raw: unknown): Record<string, unknown>[] {
+  const list = Array.isArray(raw) ? raw : raw && typeof raw === 'object' && Array.isArray((raw as { members?: unknown }).members) ? (raw as { members: unknown[] }).members : [raw]
+  return list.filter((m): m is Record<string, unknown> => !!m && typeof m === 'object' && !Array.isArray(m))
+}
+
+export type PreparedMember =
+  | { ok: true; number: string; label: string; data: z.output<typeof registrationSchema>; dropped: string[] }
+  | { ok: false; number: string; label: string; error: string }
+
+const str = (v: unknown) => (v === null || v === undefined ? '' : String(v).trim())
+const REQUIRED = new Set<string>(FIELDS.filter((f) => f.req).map((f) => f.k as string))
+
+/**
+ * One lebu-form record in the registration shape, validated with the form's own rules. Sheet cells
+ * can hold free text the form would never produce: required fields must be valid, but an invalid
+ * optional field is dropped (and reported) rather than losing the whole member.
+ */
+export function prepareImport(m: Record<string, unknown>): PreparedMember {
+  const number = str(m.memberId).toUpperCase()
+  const label = `${number || '(no number)'} ${str(m.firstNameAm)} ${str(m.fatherNameAm)}`.trim()
+  if (!number) return { ok: false, number, label, error: 'no member number (memberId)' }
+  if (!MEMBER_NUMBER.test(number)) return { ok: false, number, label, error: `member number "${number}" is not like LKH-0001` }
+
+  const input = emptyRegistration() as Record<string, unknown>
+  for (const k of Object.keys(input)) {
+    const v = m[k]
+    if (k === 'childrenList') input[k] = (Array.isArray(v) ? v : []).map((r) => ({ name: str(r?.name), sex: str(r?.sex), edu: str(r?.edu), age: str(r?.age) }))
+    else if (k === 'household') input[k] = (Array.isArray(v) ? v : []).map((r) => ({ name: str(r?.name), rel: str(r?.rel), age: str(r?.age) }))
+    else if (k === 'depts') input[k] = Array.isArray(v) ? v.map(str).filter(Boolean) : str(v).split(';').map(str).filter(Boolean)
+    else if (k in m) input[k] = str(v)
+  }
+
+  let values = cleanRegistration(input as RegistrationValues)
+  let result = registrationSchema.safeParse(values)
+  const dropped: string[] = []
+  if (!result.success) {
+    const bad = Object.keys(z.flattenError(result.error).fieldErrors)
+    const fatal = bad.filter((k) => REQUIRED.has(k))
+    if (fatal.length) return { ok: false, number, label, error: `missing or invalid ${fatal.map((k) => fieldDef(k as RegistrationKey).en).join(', ')}` }
+    for (const k of bad) { (values as Record<string, unknown>)[k] = Array.isArray((values as Record<string, unknown>)[k]) ? [] : ''; dropped.push(k) }
+    values = cleanRegistration(values)
+    result = registrationSchema.safeParse(values)
+    if (!result.success) return { ok: false, number, label, error: `invalid ${Object.keys(z.flattenError(result.error).fieldErrors).join(', ')}` }
+  }
+  return { ok: true, number, label, data: result.data, dropped }
+}
+
+/** Members per request to POST /api/members/import: the page sends a large file in batches. */
+export const IMPORT_BATCH = 50
+
+/** What happened to one record in POST /api/members/import. */
+export type ImportResult = {
+  number: string
+  label: string
+  status: 'imported' | 'exists' | 'failed'
+  id?: string
+  error?: string
+  /** Optional fields left out because they weren't valid form values. */
+  dropped?: string[]
+}

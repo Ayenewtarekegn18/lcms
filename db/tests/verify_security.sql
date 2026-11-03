@@ -154,9 +154,15 @@ BEGIN
     SELECT last_value, is_called INTO seq_last, seq_called FROM public.member_number_seq;
     got := pg_temp.try_as(member_id, $q$SELECT public.register_member('{"firstNameAm":"x","fatherNameAm":"y","sex":"male","phone":"0911000000"}'::jsonb) ->> 'member_number'$q$);
     IF got = 'denied:42501' THEN passed := passed + 1; ELSE failures := failures || E'\n  member cannot register members (got ' || got || ')'; END IF;
-    got := pg_temp.try_as(admin_id, $q$SELECT public.register_member('{"firstNameAm":"verify_security","fatherNameAm":"registrant","sex":"female","phone":"0911000001","memberNumber":"FORGED-1"}'::jsonb) ->> 'member_number'$q$);
+    got := pg_temp.try_as(admin_id, $q$SELECT public.register_member('{"firstNameAm":"verify_security","fatherNameAm":"registrant","sex":"female","phone":"0911000001"}'::jsonb) ->> 'member_number'$q$);
     test_number := nullif(substring(got FROM '([0-9]+)$'), '')::bigint;
-    IF got ~ '^[A-Z0-9]+-[0-9]{4,}$' THEN passed := passed + 1; ELSE failures := failures || E'\n  admin registers with a sequential number, client-chosen numbers ignored (got ' || got || ')'; END IF;
+    IF got ~ '^[A-Z0-9]+-[0-9]{4,}$' THEN passed := passed + 1; ELSE failures := failures || E'\n  admin registers with a sequential number (got ' || got || ')'; END IF;
+    -- Admins may keep an existing number (imports, migration 20261103000001), but only one shaped like
+    -- LKH-0001. Checked once that migration is in (before it, client numbers are ignored: above).
+    IF (SELECT prosrc FROM pg_proc WHERE oid = 'public.register_member(jsonb)'::regprocedure) LIKE '%is not like LKH-0001%' THEN
+      got := pg_temp.try_as(admin_id, $q$SELECT public.register_member('{"firstNameAm":"verify_security","fatherNameAm":"registrant","sex":"female","phone":"0911000002","memberNumber":"not a number"}'::jsonb) ->> 'member_number'$q$);
+      IF got = 'denied:22023' THEN passed := passed + 1; ELSE failures := failures || E'\n  a malformed member number is refused (got ' || got || ')'; END IF;
+    END IF;
     got := pg_temp.try_as(member_id, $q$SELECT count(*) FROM public.member_details d JOIN public.profiles p ON p.id = d.member_id WHERE p.first_name = 'verify_security'$q$);
     IF got = '0' THEN passed := passed + 1; ELSE failures := failures || E'\n  member cannot read other members'' registry records (got ' || got || ')'; END IF;
     got := pg_temp.try_as(leader_id, $q$SELECT count(*) FROM public.member_details d JOIN public.profiles p ON p.id = d.member_id WHERE p.first_name = 'verify_security'$q$);

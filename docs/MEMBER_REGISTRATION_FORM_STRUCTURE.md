@@ -41,16 +41,23 @@ Side panel: **photo** (choose a file or use the camera; cropped to a 4:5 portrai
 
 ## Importing from lebu-form
 
-[`scripts/import-lebu-form.mjs`](../scripts/import-lebu-form.mjs) copies the Google-Sheet register into Supabase, **keeping each member's number** so printed ID cards stay valid. It validates with the same schema as the form and is safe to re-run (it skips existing numbers).
+Existing records keep **their member number** (for example `LKHC-0019`), so printed ID cards stay valid. Every record is checked with the form's own rules (`prepareImport` in [`lib/members/registration.ts`](../lib/members/registration.ts)): records without a number, first name, father's name, sex or phone are skipped and listed, and an optional answer the form would never produce (for example "type O" in the blood-group column) is left out of that member and reported. Importing is safe to repeat: numbers already in the register are left as they are. Afterwards new registrations continue after the highest number.
+
+**In the app (admins): Members → Import.**
+
+1. In lebu-form, use **Download a backup** (one JSON file with every member), or choose the per-member JSON files. One or many files at once.
+2. Optionally add photos named by member number (`LKHC-0019.jpg`); they are matched to the imported members. lebu-form's backup leaves photos out.
+3. Check the summary (ready, with problems, with a photo), then **Import**. If the imported numbers use a different prefix from the app (`LKHC` vs `LKH`), tick **Number new registrations LKHC-… too**, so new members continue the same series.
+
+**From a terminal** (large imports, or copying photos straight from Google Drive):
 
 ```bash
-# dry run first: validates every record and reports problems, writes nothing
-npm run import:lebu-form -- --endpoint --dry-run
-# then for real (set ALLOW_MEMBER_IMPORT=true, LEBU_FORM_ENDPOINT, LEBU_FORM_PASSCODE in .env.local)
-npm run import:lebu-form -- --endpoint --photos
+npm run import:lebu-form -- --file backup.json --dry-run      # check only, writes nothing
+npm run import:lebu-form -- --dir exported-members/           # every .json file in a folder
+npm run import:lebu-form -- --endpoint --photos               # from the Apps Script, with Drive photos
 ```
 
-Instead of `--endpoint`, `--file members.json` reads a saved copy of the Apps Script `list` response. Records without a first name, father's name, sex or phone are reported and skipped. Optional values the form would never produce (for example "type O" typed into the blood-group column) are dropped from that record and reported.
+The terminal script needs `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `ALLOW_MEMBER_IMPORT=true` in `.env.local` (and `LEBU_FORM_ENDPOINT`, `LEBU_FORM_PASSCODE` for `--endpoint`).
 
 ## Not yet done (see the remediation plan)
 
