@@ -110,9 +110,14 @@ export function MembersDirectory({ canEdit, canRegister, currentUserId }: Member
           className="max-w-sm bg-card border-input text-foreground placeholder:text-muted-foreground"
         />
         {canRegister && (
-          <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Link href="/dashboard/members/register">+ Add Member</Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/dashboard/members/import">Import</Link>
+            </Button>
+            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Link href="/dashboard/members/register">+ Add Member</Link>
+            </Button>
+          </div>
         )}
       </div>
 

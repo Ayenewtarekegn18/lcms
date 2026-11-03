@@ -3,10 +3,15 @@
 // member's existing number (LKH-0001…) so printed ID cards stay valid. Validation is the app's own
 // (lib/members/registration.ts), so imported rows obey the same rules as the registration form.
 //
-//   npm run import:lebu-form -- --file members.json [--dry-run]
+// The app's Members → Import page does the same for admins without a terminal; this script is for
+// large imports and for copying photos from Google Drive.
+//
+//   npm run import:lebu-form -- --file members.json [--file more.json] [--dry-run]
+//   npm run import:lebu-form -- --dir exported-members/ [--dry-run]
 //   npm run import:lebu-form -- --endpoint [--photos] [--dry-run]
 //
-//   --file      JSON saved from the Apps Script "list" action ({ members: [...] }) or a plain array
+//   --file      a lebu-form backup ({ members: [...] }), a plain array or one member; may repeat
+//   --dir       every .json file in a folder (for example one file per member)
 //   --endpoint  fetch the list from LEBU_FORM_ENDPOINT using LEBU_FORM_PASSCODE (the office passcode)
 //   --photos    also copy photos from Google Drive (needs --endpoint)
 //   --dry-run   validate and report, write nothing
@@ -14,12 +19,12 @@
 // Safe to re-run: members whose number already exists are skipped.
 import fs from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
-import { z } from 'zod'
-import { registrationSchema, cleanRegistration, emptyRegistration, FIELDS } from '../lib/members/registration.ts'
+import path from 'node:path'
+import { membersFromJson, prepareImport } from '../lib/members/registration.ts'
 
 const args = process.argv.slice(2)
 const flag = (name) => args.includes(`--${name}`)
-const option = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : undefined }
+const options = (name) => args.flatMap((a, i) => (a === `--${name}` && args[i + 1] ? [args[i + 1]] : []))
 const dryRun = flag('dry-run')
 
 const fail = (msg) => { console.error(`✖ ${msg}`); process.exit(1) }
@@ -41,49 +46,22 @@ async function appsScript(action, extra = {}) {
 }
 
 // ---- load
+const files = [
+  ...options('file'),
+  ...options('dir').flatMap((d) => fs.readdirSync(d).filter((f) => f.toLowerCase().endsWith('.json')).sort().map((f) => path.join(d, f))),
+]
 let members
-if (option('file')) {
-  const raw = JSON.parse(fs.readFileSync(option('file'), 'utf8'))
-  members = Array.isArray(raw) ? raw : raw.members
+if (files.length) {
+  members = files.flatMap((f) => {
+    try { return membersFromJson(JSON.parse(fs.readFileSync(f, 'utf8'))) } catch (e) { fail(`${f}: ${e.message}`) }
+  })
 } else if (flag('endpoint')) {
   members = (await appsScript('list')).members
 } else {
-  fail('give --file <members.json> or --endpoint')
+  fail('give --file <members.json>, --dir <folder> or --endpoint')
 }
 if (!Array.isArray(members)) fail('no members array found in the input')
 console.log(`${members.length} member(s) in the source${dryRun ? ' (dry run: nothing will be written)' : ''}`)
-
-// ---- normalise one lebu-form record into the registration shape
-const KEYS = Object.keys(emptyRegistration())
-const str = (v) => (v === null || v === undefined ? '' : String(v).trim())
-function toInput(m) {
-  const input = emptyRegistration()
-  for (const k of KEYS) {
-    if (k === 'childrenList') input[k] = (Array.isArray(m[k]) ? m[k] : []).map((r) => ({ name: str(r.name), sex: str(r.sex), edu: str(r.edu), age: str(r.age) }))
-    else if (k === 'household') input[k] = (Array.isArray(m[k]) ? m[k] : []).map((r) => ({ name: str(r.name), rel: str(r.rel), age: str(r.age) }))
-    else if (k === 'depts') input[k] = Array.isArray(m[k]) ? m[k].map(str).filter(Boolean) : str(m[k]).split(';').map(str).filter(Boolean)
-    else if (k in m) input[k] = str(m[k])
-  }
-  return cleanRegistration(input)
-}
-
-// Sheet cells can hold free text the form would never produce. Required fields must be valid;
-// an invalid optional field is dropped (and reported) rather than losing the whole member.
-const required = new Set(FIELDS.filter((f) => f.req).map((f) => f.k))
-function validate(m) {
-  const input = toInput(m)
-  let result = registrationSchema.safeParse(input)
-  const dropped = []
-  if (!result.success) {
-    const bad = Object.keys(z.flattenError(result.error).fieldErrors)
-    const fatal = bad.filter((k) => required.has(k))
-    if (fatal.length) return { error: `invalid ${fatal.join(', ')}` }
-    for (const k of bad) { input[k] = Array.isArray(input[k]) ? [] : ''; dropped.push(k) }
-    result = registrationSchema.safeParse(cleanRegistration(input))
-    if (!result.success) return { error: `invalid ${Object.keys(z.flattenError(result.error).fieldErrors).join(', ')}` }
-  }
-  return { data: result.data, dropped }
-}
 
 // ---- import
 const supabase = dryRun ? null : createClient(url, serviceKey, { auth: { persistSession: false } })
@@ -91,11 +69,9 @@ const report = { imported: [], skipped: [], failed: [], dropped: [] }
 const created = new Map() // memberNumber -> profile id
 
 for (const m of members) {
-  const number = str(m.memberId)
-  const label = `${number || '(no number)'} ${str(m.firstNameAm)} ${str(m.fatherNameAm)}`.trim()
-  if (!number) { report.failed.push(`${label}: missing memberId`); continue }
-  const v = validate(m)
-  if (v.error) { report.failed.push(`${label}: ${v.error}`); continue }
+  const v = prepareImport(m)
+  const { number, label } = v
+  if (!v.ok) { report.failed.push(`${label}: ${v.error}`); continue }
   if (v.dropped.length) report.dropped.push(`${label}: ${v.dropped.join(', ')}`)
   if (dryRun) { report.imported.push(label); continue }
 
@@ -116,7 +92,7 @@ if (!dryRun && report.imported.length) {
 // ---- photos (Drive → private member-photos bucket)
 if (flag('photos') && !dryRun) {
   if (!flag('endpoint')) fail('--photos needs --endpoint')
-  const ids = members.filter((m) => m.photoDrive && created.has(str(m.memberId))).map((m) => str(m.memberId))
+  const ids = members.filter((m) => m.photoDrive && created.has(String(m.memberId).trim().toUpperCase())).map((m) => String(m.memberId).trim().toUpperCase())
   let copied = 0
   for (let i = 0; i < ids.length; i += 10) {
     const { photos } = await appsScript('photos', { ids: ids.slice(i, i + 10) })
