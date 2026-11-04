@@ -174,7 +174,7 @@ The token can change only the login and storage settings of that one project, an
    - variables `VERCEL_ORG_ID` (Vercel → Settings → General → Team ID) and `VERCEL_PROJECT_ID` (project → Settings → General → Project ID).
 4. Run **Deploy** for `staging` again. The run summary and the `staging` environment now link to the app.
 
-Preview sites, staging included, are visible only to people signed in to your Vercel account (Vercel's default deployment protection).
+Every merge to `main` deploys to this project's production address (lcms-kappa.vercel.app), which anyone can open: that's the address to give testers. Pull-request preview sites are visible only to people signed in to your Vercel account (Vercel's default deployment protection). At go-live, production gets its own Vercel project: set its `VERCEL_PROJECT_ID` on the GitHub `production` environment.
 
 ### Production (at go-live)
 

@@ -124,16 +124,13 @@ jobs:
         if: env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
         run: |
           vercel() { npx --yes vercel@62.2.0 "$@" --token="$VERCEL_TOKEN"; }
-          if [ "${{ inputs.environment }}" = production ]; then
-            vercel pull --yes --environment=production
-            vercel build --prod
-            url=$(vercel deploy --prebuilt --prod)
-          else
-            # staging is a Vercel preview deployment; its variables point at the staging database
-            vercel pull --yes --environment=preview
-            vercel build
-            url=$(vercel deploy --prebuilt)
-          fi
+          # Each environment is its own Vercel project (VERCEL_PROJECT_ID on the GitHub environment),
+          # deployed as that project's production: its public address (staging: lcms-kappa.vercel.app)
+          # always runs what was last merged. Preview deployments stay for pull requests, behind
+          # Vercel's login.
+          vercel pull --yes --environment=production
+          vercel build --prod
+          url=$(vercel deploy --prebuilt --prod)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### App: $url" >> "$GITHUB_STEP_SUMMARY"
 

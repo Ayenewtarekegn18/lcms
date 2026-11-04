@@ -15,7 +15,7 @@ How LKHC is built, changed and released. It applies to every change, whoever mak
 | | Local | CI | Staging | Production |
 |---|---|---|---|---|
 | **Database** | Your own Supabase in Docker (`npm run local:start`): Postgres, Auth, Storage, Studio, Mailpit | Throwaway: the same local stack for e2e, plain Postgres for the migration round trip | The current Supabase project (test data) | A separate Supabase project, created at go-live on a paid plan (daily backups, no pausing) |
-| **App** | `npm run dev` | `next build`, then Playwright | Vercel preview deployment of `main` | Vercel production deployment |
+| **App** | `npm run dev` | `next build`, then Playwright | the `lcms` Vercel project's production address (lcms-kappa.vercel.app), on every merge to `main` | its own Vercel project, at go-live |
 | **Changed by** | You | The pipeline, on every PR | The pipeline, on every merge to `main` | The pipeline, on a published release, after your approval |
 | **Data** | Test logins per role and sample data (`scripts/local.mjs`) | The same | Test data | Real members |
 
